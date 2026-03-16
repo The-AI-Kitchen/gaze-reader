@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebGazer Gaze Tracking - Diagnostic Test</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+  }
+
+  #start-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  #start-overlay h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: #00ff88;
+  }
+  #start-overlay p {
+    max-width: 500px;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+    color: #ccc;
+  }
+  #start-btn {
+    padding: 16px 48px;
+    font-size: 1.3rem;
+    background: #00ff88;
+    color: #1a1a2e;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-family: inherit;
+  }
+  #start-btn:hover { background: #00cc6a; }
+
+  #debug-panel {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.8);
+    border: 1px solid #00ff88;
+    border-radius: 8px;
+    padding: 12px 16px;
+    z-index: 500;
+    font-size: 13px;
+    line-height: 1.6;
+    min-width: 340px;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+  #debug-panel h3 {
+    color: #00ff88;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+  .debug-row { display: flex; justify-content: space-between; gap: 12px; }
+  .debug-label { color: #888; }
+  .debug-value { color: #fff; font-weight: bold; text-align: right; }
+  .status-loading { color: #ffaa00; }
+  .status-ready { color: #00ff88; }
+  .status-failed { color: #ff4444; }
+  .status-off { color: #666; }
+
+  #log-panel {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.8);
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 10px 14px;
+    z-index: 500;
+    font-size: 11px;
+    line-height: 1.4;
+    width: 420px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  #log-panel h4 { color: #888; margin-bottom: 4px; }
+  .log-entry { border-bottom: 1px solid #222; padding: 2px 0; }
+  .log-entry.error { color: #ff4444; }
+  .log-entry.warn { color: #ffaa00; }
+  .log-entry.info { color: #88ccff; }
+
+  .calibration-dot {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #ff6600;
+    border: 3px solid #fff;
+    cursor: pointer;
+    z-index: 200;
+    transition: transform 0.15s, background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #fff;
+    font-weight: bold;
+  }
+  .calibration-dot:hover { transform: scale(1.3); background: #ff8833; }
+  .calibration-dot.clicked { background: #00ff88; border-color: #00ff88; transform: scale(0.8); pointer-events: none; }
+
+  .target-circle {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.05);
+    z-index: 100;
+    transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+  }
+  .target-circle.lit {
+    border-color: #00ff88;
+    background: rgba(0,255,136,0.25);
+    box-shadow: 0 0 30px rgba(0,255,136,0.4);
+    color: #00ff88;
+  }
+
+  #gaze-dot {
+    position: fixed;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(255, 50, 50, 0.7);
+    border: 2px solid #ff0000;
+    z-index: 400;
+    pointer-events: none;
+    display: none;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 20px rgba(255,0,0,0.5);
+  }
+
+  #calibration-instructions {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 250;
+    pointer-events: none;
+  }
+  #calibration-instructions h2 { color: #ff6600; font-size: 1.5rem; margin-bottom: 8px; }
+  #calibration-instructions p { color: #aaa; font-size: 1rem; }
+
+  #video-container {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 600;
+    border: 2px solid #00ff88;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+  }
+  #video-container .label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.7);
+    color: #00ff88;
+    font-size: 10px;
+    text-align: center;
+    padding: 2px;
+  }
+
+  #phase-banner {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 500;
+    background: rgba(0,0,0,0.8);
+    border: 1px solid #ffaa00;
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-size: 14px;
+    color: #ffaa00;
+    font-weight: bold;
+  }
+
+  #reset-btn {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    z-index: 500;
+    padding: 8px 16px;
+    background: #ff4444;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  #reset-btn:hover { background: #cc3333; }
+</style>
+</head>
+<body>
+
+<!-- Start Overlay -->
+<div id="start-overlay">
+  <h1>WebGazer Diagnostic Test</h1>
+  <p>
+    This tool loads WebGazer, runs a 9-point calibration, then tracks your gaze.
+    All debug info is shown on screen. Click Start to begin.
+    Your browser will ask for camera permission.
+  </p>
+  <p style="color:#ffaa00; font-size: 0.85rem;">
+    Requires: camera access, good lighting, face visible in frame.
+  </p>
+  <button id="start-btn">Start WebGazer</button>
+</div>
+
+<!-- Phase Banner -->
+<div id="phase-banner" style="display:none;">Phase: Initializing</div>
+
+<!-- Debug Panel -->
+<div id="debug-panel" style="display:none;">
+  <h3>Debug Info</h3>
+  <div class="debug-row"><span class="debug-label">WebGazer status:</span><span class="debug-value" id="d-status">--</span></div>
+  <div class="debug-row"><span class="debug-label">Error:</span><span class="debug-value" id="d-error" style="color:#ff4444;">none</span></div>
+  <div class="debug-row"><span class="debug-label">Video stream:</span><span class="debug-value" id="d-video">--</span></div>
+  <div class="debug-row"><span class="debug-label">Video dimensions:</span><span class="debug-value" id="d-videodim">--</span></div>
+  <div class="debug-row"><span class="debug-label">Face detected:</span><span class="debug-value" id="d-face">--</span></div>
+  <div class="debug-row"><span class="debug-label">Gaze callbacks (total):</span><span class="debug-value" id="d-total">0</span></div>
+  <div class="debug-row"><span class="debug-label">Gaze callbacks (null):</span><span class="debug-value" id="d-null">0</span></div>
+  <div class="debug-row"><span class="debug-label">Gaze callbacks (data):</span><span class="debug-value" id="d-data">0</span></div>
+  <div class="debug-row"><span class="debug-label">Null ratio:</span><span class="debug-value" id="d-ratio">--</span></div>
+  <div class="debug-row"><span class="debug-label">Last gaze X:</span><span class="debug-value" id="d-x">--</span></div>
+  <div class="debug-row"><span class="debug-label">Last gaze Y:</span><span class="debug-value" id="d-y">--</span></div>
+  <div class="debug-row"><span class="debug-label">Calibration:</span><span class="debug-value" id="d-cal">0 / 9</span></div>
+  <div class="debug-row"><span class="debug-label">Regression model:</span><span class="debug-value" id="d-model">--</span></div>
+  <div class="debug-row"><span class="debug-label">Elapsed time:</span><span class="debug-value" id="d-elapsed">0s</span></div>
+  <div class="debug-row"><span class="debug-label">Window size:</span><span class="debug-value" id="d-window">--</span></div>
+</div>
+
+<!-- Log Panel -->
+<div id="log-panel" style="display:none;">
+  <h4>Event Log (newest first)</h4>
+  <div id="log-entries"></div>
+</div>
+
+<!-- Gaze Dot -->
+<div id="gaze-dot"></div>
+
+<!-- Calibration Instructions -->
+<div id="calibration-instructions" style="display:none;">
+  <h2>Click each orange dot</h2>
+  <p>Look at the dot, then click it. Do all 9.</p>
+</div>
+
+<!-- Video Container (will hold the webcam feed) -->
+<div id="video-container" style="display:none;">
+  <div class="label">Webcam Feed</div>
+</div>
+
+<!-- Reset Button -->
+<button id="reset-btn" style="display:none;" onclick="location.reload()">Reset / Reload</button>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const state = {
+  phase: 'idle', // idle, loading, calibrating, tracking, failed
+  gazeTotal: 0,
+  gazeNull: 0,
+  gazeData: 0,
+  lastX: null,
+  lastY: null,
+  calibrated: 0,
+  startTime: null,
+  faceDetected: false,
+  lastFaceCheck: 0,
+  errorMsg: null,
+};
+
+const CALIBRATION_NEEDED = 9;
+const GAZE_HIT_RADIUS = 120; // px distance to "light up" a target
+const CALIBRATION_POSITIONS = [
+  [0.1, 0.1], [0.5, 0.1], [0.9, 0.1],
+  [0.1, 0.5], [0.5, 0.5], [0.9, 0.5],
+  [0.1, 0.9], [0.5, 0.9], [0.9, 0.9],
+];
+
+// ============================================================
+// LOGGING
+// ============================================================
+function log(msg, level = 'info') {
+  const ts = state.startTime ? ((Date.now() - state.startTime) / 1000).toFixed(1) + 's' : '0s';
+  const full = `[${ts}] ${msg}`;
+
+  if (level === 'error') console.error(full);
+  else if (level === 'warn') console.warn(full);
+  else console.log(full);
+
+  const el = document.getElementById('log-entries');
+  if (el) {
+    const div = document.createElement('div');
+    div.className = 'log-entry ' + level;
+    div.textContent = full;
+    el.prepend(div);
+    // Keep max 100 entries
+    while (el.children.length > 100) el.removeChild(el.lastChild);
+  }
+}
+
+// ============================================================
+// DEBUG PANEL UPDATE
+// ============================================================
+function updateDebug() {
+  const statusEl = document.getElementById('d-status');
+  statusEl.textContent = state.phase;
+  statusEl.className = 'debug-value status-' + (
+    state.phase === 'tracking' || state.phase === 'calibrating' ? 'ready' :
+    state.phase === 'failed' ? 'failed' :
+    state.phase === 'loading' ? 'loading' : 'off'
+  );
+
+  document.getElementById('d-error').textContent = state.errorMsg || 'none';
+  document.getElementById('d-total').textContent = state.gazeTotal;
+  document.getElementById('d-null').textContent = state.gazeNull;
+  document.getElementById('d-data').textContent = state.gazeData;
+  document.getElementById('d-x').textContent = state.lastX !== null ? Math.round(state.lastX) : '--';
+  document.getElementById('d-y').textContent = state.lastY !== null ? Math.round(state.lastY) : '--';
+  document.getElementById('d-cal').textContent = state.calibrated + ' / ' + CALIBRATION_NEEDED;
+  document.getElementById('d-face').textContent = state.faceDetected ? 'YES' : 'NO';
+  document.getElementById('d-face').style.color = state.faceDetected ? '#00ff88' : '#ff4444';
+  document.getElementById('d-window').textContent = window.innerWidth + ' x ' + window.innerHeight;
+
+  const ratio = state.gazeTotal > 0 ? (state.gazeNull / state.gazeTotal * 100).toFixed(1) + '%' : '--';
+  document.getElementById('d-ratio').textContent = ratio;
+
+  if (state.startTime) {
+    document.getElementById('d-elapsed').textContent = ((Date.now() - state.startTime) / 1000).toFixed(0) + 's';
+  }
+
+  // Check video stream
+  try {
+    const video = document.getElementById('webgazerVideoFeed') || document.querySelector('video');
+    if (video && video.srcObject) {
+      const tracks = video.srcObject.getVideoTracks();
+      const active = tracks.length > 0 && tracks[0].readyState === 'live';
+      document.getElementById('d-video').textContent = active ? 'ACTIVE (' + tracks.length + ' tracks)' : 'INACTIVE';
+      document.getElementById('d-video').style.color = active ? '#00ff88' : '#ff4444';
+      if (video.videoWidth) {
+        document.getElementById('d-videodim').textContent = video.videoWidth + 'x' + video.videoHeight;
+      }
+    } else {
+      document.getElementById('d-video').textContent = 'no stream';
+      document.getElementById('d-video').style.color = '#ffaa00';
+    }
+  } catch (e) {
+    document.getElementById('d-video').textContent = 'error checking';
+  }
+
+  // Check regression model
+  try {
+    if (window.webgazer) {
+      const reg = webgazer.getRegression();
+      document.getElementById('d-model').textContent = reg ? (typeof reg[0] === 'object' ? reg[0].constructor.name || 'active' : 'active') : 'none';
+    }
+  } catch (e) {
+    document.getElementById('d-model').textContent = 'error';
+  }
+}
+
+// Update debug every 250ms
+setInterval(updateDebug, 250);
+
+// ============================================================
+// PHASE MANAGEMENT
+// ============================================================
+function setPhase(phase) {
+  state.phase = phase;
+  const banner = document.getElementById('phase-banner');
+  banner.style.display = 'block';
+  banner.textContent = 'Phase: ' + phase.charAt(0).toUpperCase() + phase.slice(1);
+  log('Phase changed to: ' + phase);
+}
+
+// ============================================================
+// CREATE CALIBRATION DOTS
+// ============================================================
+function createCalibrationDots() {
+  // Remove old ones
+  document.querySelectorAll('.calibration-dot').forEach(el => el.remove());
+
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+
+  CALIBRATION_POSITIONS.forEach(([fx, fy], i) => {
+    const dot = document.createElement('div');
+    dot.className = 'calibration-dot';
+    dot.textContent = (i + 1);
+    dot.style.left = (fx * w - 20) + 'px';
+    dot.style.top = (fy * h - 20) + 'px';
+    dot.dataset.index = i;
+    dot.addEventListener('click', onCalibrationClick);
+    document.body.appendChild(dot);
+  });
+
+  document.getElementById('calibration-instructions').style.display = 'block';
+}
+
+function onCalibrationClick(e) {
+  const dot = e.currentTarget;
+  if (dot.classList.contains('clicked')) return;
+
+  dot.classList.add('clicked');
+  state.calibrated++;
+  log('Calibration dot ' + state.calibrated + '/' + CALIBRATION_NEEDED + ' clicked at (' + Math.round(e.clientX) + ', ' + Math.round(e.clientY) + ')');
+  updateDebug();
+
+  if (state.calibrated >= CALIBRATION_NEEDED) {
+    log('Calibration complete! Switching to tracking mode.');
+    document.getElementById('calibration-instructions').style.display = 'none';
+    // Remove dots after short delay
+    setTimeout(() => {
+      document.querySelectorAll('.calibration-dot').forEach(el => el.remove());
+    }, 500);
+    setPhase('tracking');
+    document.getElementById('gaze-dot').style.display = 'block';
+    createTargetCircles();
+  }
+}
+
+// ============================================================
+// CREATE TARGET CIRCLES (post-calibration)
+// ============================================================
+function createTargetCircles() {
+  document.querySelectorAll('.target-circle').forEach(el => el.remove());
+
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+
+  CALIBRATION_POSITIONS.forEach(([fx, fy], i) => {
+    const circle = document.createElement('div');
+    circle.className = 'target-circle';
+    circle.id = 'target-' + i;
+    circle.textContent = (i + 1);
+    circle.style.left = (fx * w - 40) + 'px';
+    circle.style.top = (fy * h - 40) + 'px';
+    document.body.appendChild(circle);
+  });
+}
+
+// ============================================================
+// GAZE CALLBACK
+// ============================================================
+function onGaze(data, elapsedTime) {
+  state.gazeTotal++;
+
+  if (!data) {
+    state.gazeNull++;
+    // Log every 100th null to avoid flooding
+    if (state.gazeNull % 100 === 1) {
+      log('Gaze callback null (count: ' + state.gazeNull + ')', 'warn');
+    }
+    return;
+  }
+
+  state.gazeData++;
+  state.lastX = data.x;
+  state.lastY = data.y;
+
+  // Move gaze dot
+  const dot = document.getElementById('gaze-dot');
+  dot.style.left = data.x + 'px';
+  dot.style.top = data.y + 'px';
+
+  // Log first few data callbacks
+  if (state.gazeData <= 5) {
+    log('Gaze DATA received #' + state.gazeData + ': (' + Math.round(data.x) + ', ' + Math.round(data.y) + ')');
+  } else if (state.gazeData % 200 === 0) {
+    log('Gaze data milestone: ' + state.gazeData + ' data callbacks so far');
+  }
+
+  // Light up nearby targets
+  if (state.phase === 'tracking') {
+    updateTargetHighlights(data.x, data.y);
+  }
+}
+
+function updateTargetHighlights(gx, gy) {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+
+  CALIBRATION_POSITIONS.forEach(([fx, fy], i) => {
+    const cx = fx * w;
+    const cy = fy * h;
+    const dist = Math.sqrt((gx - cx) ** 2 + (gy - cy) ** 2);
+    const circle = document.getElementById('target-' + i);
+    if (circle) {
+      if (dist < GAZE_HIT_RADIUS) {
+        circle.classList.add('lit');
+      } else {
+        circle.classList.remove('lit');
+      }
+    }
+  });
+}
+
+// ============================================================
+// FACE DETECTION CHECK (periodic)
+// ============================================================
+function checkFaceDetection() {
+  try {
+    if (window.webgazer && webgazer.getTracker) {
+      // Attempt to get current prediction as a face detection proxy
+      webgazer.getCurrentPrediction().then(pred => {
+        state.faceDetected = pred !== null;
+      }).catch(() => {
+        state.faceDetected = false;
+      });
+    }
+  } catch (e) {
+    // silent
+  }
+}
+setInterval(checkFaceDetection, 1000);
+
+// ============================================================
+// SETUP WEBCAM VIDEO VISIBILITY
+// ============================================================
+function ensureVideoVisible() {
+  const container = document.getElementById('video-container');
+
+  // WebGazer creates elements: #webgazerVideoFeed, #webgazerVideoCanvas, etc.
+  const video = document.getElementById('webgazerVideoFeed');
+  const canvas = document.getElementById('webgazerVideoCanvas');
+  const faceCanvas = document.getElementById('webgazerFaceFeedbackBox');
+  const faceOverlay = document.getElementById('webgazerFaceOverlay');
+
+  // Force video visible
+  if (video) {
+    video.style.display = 'block';
+    video.style.position = 'static';
+    video.style.width = '240px';
+    video.style.height = 'auto';
+    video.style.opacity = '1';
+    video.style.visibility = 'visible';
+
+    // Move into our container if not already there
+    if (video.parentElement !== container) {
+      container.prepend(video);
+    }
+    container.style.display = 'block';
+    log('Video element found and made visible (dimensions: ' + video.videoWidth + 'x' + video.videoHeight + ')');
+  }
+
+  // Also grab the overlay canvas if present
+  if (canvas) {
+    canvas.style.display = 'block';
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '240px';
+    canvas.style.height = 'auto';
+    canvas.style.opacity = '0.5';
+    if (canvas.parentElement !== container) {
+      container.appendChild(canvas);
+    }
+  }
+
+  // Hide the face feedback box (it can be annoying) but keep face overlay
+  if (faceCanvas) {
+    faceCanvas.style.display = 'none';
+  }
+  if (faceOverlay) {
+    faceOverlay.style.display = 'block';
+    faceOverlay.style.position = 'absolute';
+    faceOverlay.style.top = '0';
+    faceOverlay.style.left = '0';
+    faceOverlay.style.width = '240px';
+    faceOverlay.style.height = 'auto';
+    if (faceOverlay.parentElement !== container) {
+      container.appendChild(faceOverlay);
+    }
+  }
+
+  // Also ensure WebGazer's own container doesn't hide things
+  const wgContainer = document.getElementById('webgazerGazeDot');
+  if (wgContainer) {
+    wgContainer.style.display = 'none'; // hide webgazer's own dot, we use ours
+  }
+}
+
+// Repeatedly ensure video stays visible (WebGazer may toggle it)
+setInterval(ensureVideoVisible, 500);
+
+// ============================================================
+// START WEBGAZER
+// ============================================================
+async function startWebGazer() {
+  document.getElementById('start-overlay').style.display = 'none';
+  document.getElementById('debug-panel').style.display = 'block';
+  document.getElementById('log-panel').style.display = 'block';
+  document.getElementById('reset-btn').style.display = 'block';
+
+  state.startTime = Date.now();
+  setPhase('loading');
+
+  log('Loading WebGazer script from CDN...');
+
+  try {
+    // Load the script
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://webgazer.cs.brown.edu/webgazer.js';
+      script.onload = () => {
+        log('WebGazer script loaded successfully');
+        resolve();
+      };
+      script.onerror = (e) => {
+        log('FAILED to load WebGazer script!', 'error');
+        reject(new Error('Script load failed'));
+      };
+      document.head.appendChild(script);
+    });
+
+    if (!window.webgazer) {
+      throw new Error('webgazer global not found after script load');
+    }
+
+    log('window.webgazer exists. Version info: ' + (webgazer.params ? JSON.stringify(Object.keys(webgazer.params)) : 'no params'));
+    log('Available methods: ' + Object.keys(webgazer).filter(k => typeof webgazer[k] === 'function').join(', '));
+
+    // Configure WebGazer
+    log('Configuring WebGazer...');
+
+    // Set MediaPipe path to local files
+    if (webgazer.setMediaPipePath) {
+      webgazer.setMediaPipePath('/mediapipe/');
+      log('Set MediaPipe path to /mediapipe/');
+    } else {
+      log('setMediaPipePath not available on this version', 'warn');
+    }
+
+    // Show video, prediction points, face overlay
+    webgazer.showVideoPreview(true);
+    log('showVideoPreview(true)');
+
+    webgazer.showPredictionPoints(false); // we draw our own
+    log('showPredictionPoints(false) - using custom gaze dot');
+
+    if (webgazer.showFaceOverlay) {
+      webgazer.showFaceOverlay(true);
+      log('showFaceOverlay(true)');
+    }
+
+    if (webgazer.showFaceFeedbackBox) {
+      webgazer.showFaceFeedbackBox(false);
+      log('showFaceFeedbackBox(false)');
+    }
+
+    // Set regression model
+    webgazer.setRegression('ridge');
+    log('Set regression model: ridge');
+
+    // Set gaze listener BEFORE begin
+    webgazer.setGazeListener(onGaze);
+    log('Gaze listener set');
+
+    // Begin
+    log('Calling webgazer.begin()...');
+    await webgazer.begin();
+    log('webgazer.begin() resolved successfully!');
+
+    // Force video visible
+    ensureVideoVisible();
+
+    // Move to calibration
+    setPhase('calibrating');
+    createCalibrationDots();
+
+    log('Ready for calibration. Click the 9 orange dots.');
+
+  } catch (err) {
+    state.errorMsg = err.message || String(err);
+    setPhase('failed');
+    log('FATAL ERROR: ' + state.errorMsg, 'error');
+    log('Stack: ' + (err.stack || 'no stack'), 'error');
+  }
+}
+
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+document.getElementById('start-btn').addEventListener('click', startWebGazer);
+
+// Log window errors
+window.addEventListener('error', (e) => {
+  log('Window error: ' + e.message + ' at ' + e.filename + ':' + e.lineno, 'error');
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+  log('Unhandled promise rejection: ' + (e.reason?.message || e.reason), 'error');
+});
+
+// Handle resize
+window.addEventListener('resize', () => {
+  if (state.phase === 'tracking') {
+    createTargetCircles();
+  } else if (state.phase === 'calibrating') {
+    createCalibrationDots();
+  }
+});
+
+log('Page loaded. Waiting for user to click Start.');
+</script>
+</body>
+</html>
