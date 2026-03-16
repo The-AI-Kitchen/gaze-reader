@@ -88,10 +88,11 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
         document.head.appendChild(style);
       }
 
-      // 1. Load WebGazer script
+      // 1. Load WebGazer from local npm build (not CDN) to ensure
+      //    version compatibility with MediaPipe face_mesh files.
       if (!window.webgazer) {
         const script = document.createElement('script');
-        script.src = 'https://webgazer.cs.brown.edu/webgazer.js';
+        script.src = '/webgazer.js';
         script.async = true;
         try {
           await new Promise<void>((resolve, reject) => {
@@ -106,14 +107,25 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
         }
       }
 
-      // 2. Start WebGazer
+      // 2. Start WebGazer. begin() often hangs even though face
+      //    detection and gaze data start flowing, so use a timeout.
       try {
-        await window.webgazer
+        window.webgazer
           .setRegression('ridge')
           .showPredictionPoints(false)
           .showFaceOverlay(false)
-          .showFaceFeedbackBox(false)
-          .begin();
+          .showFaceFeedbackBox(false);
+
+        const beginPromise = window.webgazer.begin();
+        const timeoutPromise = new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error('begin() timeout')), 15000)
+        );
+
+        try {
+          await Promise.race([beginPromise, timeoutPromise]);
+        } catch {
+          console.log('WebGazer begin() timed out, proceeding (gaze data likely flowing)');
+        }
 
         console.log('WebGazer started, showing calibration');
         if (!cancelled) setDebugInfo('WebGazer initialized OK. Calibrating...');

@@ -13,7 +13,8 @@
     "@mediapipe/face_mesh": "^0.4.1633559619",
     "next": "^13.5.7",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "webgazer": "^3.5.3"
   },
   "devDependencies": {
     "@types/node": "^20",
