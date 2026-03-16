@@ -10,21 +10,8 @@ interface GazeTrackerProps {
 
 declare global {
   interface Window {
-    webgazer: {
-      setGazeListener: (
-        cb: (data: { x: number; y: number } | null, elapsedTime: number) => void
-      ) => Window['webgazer'];
-      begin: () => Promise<void>;
-      end: () => void;
-      showVideo: (show: boolean) => Window['webgazer'];
-      showFaceOverlay: (show: boolean) => Window['webgazer'];
-      showFaceFeedbackBox: (show: boolean) => Window['webgazer'];
-      showPredictionPoints: (show: boolean) => Window['webgazer'];
-      setRegression: (type: string) => Window['webgazer'];
-      setTracker: (type: string) => Window['webgazer'];
-      pause: () => void;
-      resume: () => void;
-    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    webgazer: any;
   }
 }
 
@@ -32,14 +19,22 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
   const [mode, setMode] = useState<'loading' | 'calibrating' | 'tracking' | 'mouse'>(
     'loading'
   );
-  const [showDot, setShowDot] = useState(false);
+  const [showDot, setShowDot] = useState(true);
   const gazeBuffer = useRef<Array<{ x: number; y: number }>>([]);
   const dotRef = useRef<HTMLDivElement>(null);
+  const onGazeRef = useRef(onGaze);
+  onGazeRef.current = onGaze;
 
+  // Mouse fallback mode
   const startMouseMode = useCallback(() => {
     setMode('mouse');
+  }, []);
+
+  // Mouse mode event listener (separate effect so it cleans up properly)
+  useEffect(() => {
+    if (mode !== 'mouse') return;
     const handler = (e: MouseEvent) => {
-      onGaze(e.clientX, e.clientY, Date.now());
+      onGazeRef.current(e.clientX, e.clientY, Date.now());
       if (dotRef.current) {
         dotRef.current.style.left = `${e.clientX}px`;
         dotRef.current.style.top = `${e.clientY}px`;
@@ -47,87 +42,88 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
     };
     window.addEventListener('mousemove', handler);
     return () => window.removeEventListener('mousemove', handler);
-  }, [onGaze]);
+  }, [mode]);
 
+  // Load WebGazer and check webcam on mount
   useEffect(() => {
-    let cleanup: (() => void) | undefined;
+    let cancelled = false;
 
-    const initWebGazer = async () => {
-      // Load WebGazer script
+    const init = async () => {
+      // Load WebGazer script if needed
       if (!window.webgazer) {
         const script = document.createElement('script');
         script.src = 'https://webgazer.cs.brown.edu/webgazer.js';
         script.async = true;
-
         try {
           await new Promise<void>((resolve, reject) => {
             script.onload = () => resolve();
-            script.onerror = () => reject(new Error('WebGazer failed to load'));
+            script.onerror = () => reject(new Error('WebGazer script failed'));
             document.head.appendChild(script);
           });
         } catch {
-          console.warn('WebGazer failed to load, falling back to mouse mode');
-          cleanup = startMouseMode();
+          console.warn('WebGazer failed to load, using mouse mode');
+          if (!cancelled) startMouseMode();
           return;
         }
       }
 
+      // Check webcam access
       try {
-        // Check webcam permission
-        await navigator.mediaDevices.getUserMedia({ video: true });
-
-        setMode('calibrating');
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        // Release the stream so WebGazer can claim it
+        stream.getTracks().forEach((t) => t.stop());
+        if (!cancelled) setMode('calibrating');
       } catch {
-        console.warn('Webcam unavailable, falling back to mouse mode');
-        cleanup = startMouseMode();
+        console.warn('Webcam unavailable, using mouse mode');
+        if (!cancelled) startMouseMode();
       }
     };
 
-    initWebGazer();
-
-    return () => {
-      cleanup?.();
-      if (window.webgazer && mode === 'tracking') {
-        try { window.webgazer.end(); } catch {}
-      }
-    };
-  }, []);
+    init();
+    return () => { cancelled = true; };
+  }, [startMouseMode]);
 
   const handleCalibrationComplete = useCallback(async () => {
     try {
-      window.webgazer
+      // Start WebGazer first, then attach listener
+      await window.webgazer
         .setRegression('ridge')
         .showVideo(false)
         .showFaceOverlay(false)
         .showFaceFeedbackBox(false)
         .showPredictionPoints(false)
-        .setGazeListener((data, _elapsed) => {
+        .begin();
+
+      // Now attach the gaze listener
+      window.webgazer.setGazeListener(
+        (data: { x: number; y: number } | null) => {
           if (!data) return;
           gazeBuffer.current.push({ x: data.x, y: data.y });
           if (gazeBuffer.current.length > 20) {
             gazeBuffer.current = gazeBuffer.current.slice(-20);
           }
           const smoothed = smoothGaze(gazeBuffer.current, 5);
-          onGaze(smoothed.x, smoothed.y, Date.now());
+          onGazeRef.current(smoothed.x, smoothed.y, Date.now());
 
           if (dotRef.current) {
             dotRef.current.style.left = `${smoothed.x}px`;
             dotRef.current.style.top = `${smoothed.y}px`;
           }
-        });
+        }
+      );
 
-      await window.webgazer.begin();
       setMode('tracking');
     } catch (err) {
-      console.warn('WebGazer initialization failed:', err);
+      console.warn('WebGazer start failed:', err);
       startMouseMode();
     }
-  }, [onGaze, startMouseMode]);
+  }, [startMouseMode]);
 
   const handleRecalibrate = () => {
     if (window.webgazer) {
-      window.webgazer.pause();
+      try { window.webgazer.pause(); } catch {}
     }
+    gazeBuffer.current = [];
     setMode('calibrating');
   };
 
@@ -144,25 +140,35 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
         />
       )}
 
-      {/* Gaze/mouse indicator dot */}
+      {/* Gaze indicator dot - visible by default so users can verify tracking */}
       {showDot && (mode === 'tracking' || mode === 'mouse') && (
         <div
           ref={dotRef}
-          className="fixed w-3 h-3 rounded-full bg-red-400/40 pointer-events-none z-40 -translate-x-1/2 -translate-y-1/2"
-          style={{ transition: 'left 50ms, top 50ms' }}
+          style={{
+            position: 'fixed',
+            width: '12px',
+            height: '12px',
+            borderRadius: '50%',
+            backgroundColor: mode === 'tracking' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(239, 68, 68, 0.4)',
+            pointerEvents: 'none',
+            zIndex: 9998,
+            transform: 'translate(-50%, -50%)',
+            transition: 'left 60ms, top 60ms',
+          }}
         />
       )}
 
       {/* Status bar controls */}
       <div className="flex items-center gap-3 text-sm">
         {mode === 'mouse' && (
-          <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">
-            MOUSE MODE
+          <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium"
+                title="Eye tracking unavailable. The cursor position is used instead of gaze.">
+            MOUSE MODE (no webcam)
           </span>
         )}
         {mode === 'tracking' && (
           <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
-            GAZE TRACKING
+            👁 GAZE TRACKING
           </span>
         )}
         {mode === 'loading' && (

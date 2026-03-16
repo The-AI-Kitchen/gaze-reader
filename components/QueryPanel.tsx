@@ -146,18 +146,26 @@ export default function QueryPanel({
     ? currentTarget.text.length > 100
       ? currentTarget.text.slice(0, 100) + '...'
       : currentTarget.text
-    : 'Move your gaze over the paper to select text';
+    : null;
 
   return (
     <div className="flex flex-col h-full">
-      {/* Current target */}
+      {/* Current target - compact, just confirms selection */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-          Currently looking at:
-        </p>
-        <div className="p-3 bg-white rounded-lg border border-gray-200 text-sm text-gray-700 leading-relaxed">
-          {snippetText}
-        </div>
+        {snippetText ? (
+          <div className="p-3 bg-white rounded-lg border border-amber-200 text-sm text-gray-700 leading-relaxed">
+            <span className="text-xs font-medium text-amber-600 uppercase tracking-wide block mb-1">
+              Selected ({currentTarget?.chunkType}):
+            </span>
+            {snippetText}
+          </div>
+        ) : (
+          <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-400 leading-relaxed text-center">
+            Look at (or hover over) a paragraph in the paper.
+            <br />
+            <span className="text-xs">The highlighted passage will appear here.</span>
+          </div>
+        )}
       </div>
 
       {/* Quick actions */}

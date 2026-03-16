@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { gazeToChunk, detectDwell, type GazeTarget } from '@/lib/gaze-utils';
 
 interface SearchlightProps {
@@ -20,40 +20,33 @@ export default function Searchlight({
 }: SearchlightProps) {
   const dwellHistory = useRef<Array<{ chunkId: string; timestamp: number }>>([]);
   const currentHighlight = useRef<string | null>(null);
-  const [activeLabel, setActiveLabel] = useState<string | null>(null);
-  const [labelPos, setLabelPos] = useState<{ top: number; left: number }>({
-    top: 0,
-    left: 0,
-  });
+  const onTargetChangeRef = useRef(onTargetChange);
+  onTargetChangeRef.current = onTargetChange;
 
-  const updateHighlight = useCallback(
-    (chunkId: string | null, target: GazeTarget | null) => {
-      // Remove old highlight (unless locked)
-      if (currentHighlight.current && currentHighlight.current !== lockedChunkId) {
-        const oldEl = document.querySelector(
-          `[data-chunk-id="${currentHighlight.current}"]`
-        ) as HTMLElement | null;
-        if (oldEl) {
-          oldEl.style.backgroundColor = '';
-          oldEl.style.transition = 'background-color 200ms ease';
-        }
-      }
+  const clearHighlight = useCallback((chunkId: string) => {
+    const el = document.querySelector(
+      `[data-chunk-id="${chunkId}"]`
+    ) as HTMLElement | null;
+    if (el) {
+      el.style.backgroundColor = '';
+      el.style.borderLeft = '';
+      el.style.paddingLeft = '';
+      el.style.transition = 'background-color 200ms ease, border-left 200ms ease';
+    }
+  }, []);
 
-      // Apply new highlight
-      if (chunkId && chunkId !== lockedChunkId) {
-        const newEl = document.querySelector(
-          `[data-chunk-id="${chunkId}"]`
-        ) as HTMLElement | null;
-        if (newEl) {
-          newEl.style.transition = 'background-color 200ms ease';
-          newEl.style.backgroundColor = 'rgba(255, 235, 120, 0.25)';
-        }
-      }
-
-      currentHighlight.current = chunkId;
-    },
-    [lockedChunkId]
-  );
+  const applyHighlight = useCallback((chunkId: string) => {
+    const el = document.querySelector(
+      `[data-chunk-id="${chunkId}"]`
+    ) as HTMLElement | null;
+    if (el) {
+      el.style.transition = 'background-color 200ms ease, border-left 200ms ease';
+      // Visible highlight: warm yellow background + left accent bar
+      el.style.backgroundColor = 'rgba(255, 220, 80, 0.3)';
+      el.style.borderLeft = '4px solid rgba(245, 180, 30, 0.8)';
+      el.style.paddingLeft = '8px';
+    }
+  }, []);
 
   useEffect(() => {
     if (gazeX === 0 && gazeY === 0) return;
@@ -64,7 +57,6 @@ export default function Searchlight({
     // Update dwell history
     if (chunkId) {
       dwellHistory.current.push({ chunkId, timestamp: gazeTimestamp });
-      // Keep history manageable
       if (dwellHistory.current.length > 50) {
         dwellHistory.current = dwellHistory.current.slice(-30);
       }
@@ -73,27 +65,31 @@ export default function Searchlight({
     // Check dwell threshold
     if (chunkId && detectDwell(chunkId, dwellHistory.current, 300)) {
       if (chunkId !== currentHighlight.current) {
-        updateHighlight(chunkId, target);
-        onTargetChange(target);
-
-        if (target) {
-          setActiveLabel(target.chunkType);
-          const rect = target.element.getBoundingClientRect();
-          setLabelPos({ top: rect.top - 24, left: rect.left });
+        // Remove old highlight (unless locked)
+        if (currentHighlight.current && currentHighlight.current !== lockedChunkId) {
+          clearHighlight(currentHighlight.current);
         }
+        // Apply new highlight (unless locked chunk)
+        if (chunkId !== lockedChunkId) {
+          applyHighlight(chunkId);
+        }
+        currentHighlight.current = chunkId;
+        onTargetChangeRef.current(target);
       }
     }
-  }, [gazeX, gazeY, gazeTimestamp, updateHighlight, onTargetChange]);
+  }, [gazeX, gazeY, gazeTimestamp, lockedChunkId, clearHighlight, applyHighlight]);
 
-  // Handle locked chunk styling
+  // Handle locked chunk styling (when user asks a question)
   useEffect(() => {
     if (lockedChunkId) {
       const el = document.querySelector(
         `[data-chunk-id="${lockedChunkId}"]`
       ) as HTMLElement | null;
       if (el) {
-        el.style.backgroundColor = 'rgba(59, 130, 246, 0.08)';
-        el.style.outline = '2px solid rgba(59, 130, 246, 0.4)';
+        el.style.backgroundColor = 'rgba(59, 130, 246, 0.12)';
+        el.style.borderLeft = '4px solid rgba(59, 130, 246, 0.6)';
+        el.style.paddingLeft = '8px';
+        el.style.outline = '2px solid rgba(59, 130, 246, 0.3)';
         el.style.outlineOffset = '2px';
         el.style.borderRadius = '4px';
       }
@@ -106,6 +102,8 @@ export default function Searchlight({
         ) as HTMLElement | null;
         if (el) {
           el.style.backgroundColor = '';
+          el.style.borderLeft = '';
+          el.style.paddingLeft = '';
           el.style.outline = '';
           el.style.outlineOffset = '';
           el.style.borderRadius = '';
@@ -114,20 +112,6 @@ export default function Searchlight({
     };
   }, [lockedChunkId]);
 
-  return (
-    <>
-      {activeLabel && !lockedChunkId && (
-        <div
-          className="fixed z-30 px-2 py-0.5 bg-gray-800/70 text-white text-xs rounded pointer-events-none"
-          style={{
-            top: `${labelPos.top}px`,
-            left: `${labelPos.left}px`,
-            transition: 'top 200ms ease, left 200ms ease, opacity 200ms ease',
-          }}
-        >
-          Looking at: {activeLabel}
-        </div>
-      )}
-    </>
-  );
+  // No floating label needed - the highlight itself is the feedback
+  return null;
 }
