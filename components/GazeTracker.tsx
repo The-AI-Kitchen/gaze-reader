@@ -67,44 +67,25 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
         }
       }
 
-      // 2. Start WebGazer with video visible (needed for face detection to init)
+      // 2. Start WebGazer (video element is created but hidden via CSS)
       try {
         await window.webgazer
           .setRegression('ridge')
           .showPredictionPoints(false)
           .begin();
 
-        // WebGazer continuously repositions its video container on each
-        // animation frame, so inline styles get overridden immediately.
-        // Inject a <style> with !important rules to force our layout.
-        const styleId = 'webgazer-override-styles';
+        // Hide all WebGazer UI elements. The video stream still runs
+        // behind the scenes for face/gaze detection — it doesn't need
+        // to be visible. We use a <style> because WebGazer aggressively
+        // repositions its elements on every animation frame, overriding
+        // any inline styles we set.
+        const styleId = 'webgazer-hide-styles';
         if (!document.getElementById(styleId)) {
           const style = document.createElement('style');
           style.id = styleId;
           style.textContent = `
-            #webgazerVideoContainer {
-              position: fixed !important;
-              top: auto !important;
-              left: 50% !important;
-              bottom: 8px !important;
-              right: auto !important;
-              transform: translateX(-50%) !important;
-              width: 160px !important;
-              height: 120px !important;
-              z-index: 10002 !important;
-              overflow: hidden !important;
-              border-radius: 8px !important;
-              border: 2px solid #3b82f6 !important;
-            }
-            #webgazerVideoFeed {
-              width: 160px !important;
-              height: 120px !important;
-              object-fit: cover !important;
-              opacity: 0.9 !important;
-              position: relative !important;
-              top: 0 !important;
-              left: 0 !important;
-            }
+            #webgazerVideoContainer,
+            #webgazerVideoFeed,
             #webgazerFaceOverlay,
             #webgazerFaceFeedbackBox {
               display: none !important;
@@ -130,19 +111,8 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
   // After calibration: hide video, attach gaze listener, switch to tracking
   const handleCalibrationComplete = useCallback(() => {
     try {
-      // Hide the webcam preview now that calibration is done.
-      // Replace the positioning overrides with a hide-all rule.
-      const overrideStyle = document.getElementById('webgazer-override-styles');
-      if (overrideStyle) {
-        overrideStyle.textContent = `
-          #webgazerVideoContainer,
-          #webgazerVideoFeed,
-          #webgazerFaceOverlay,
-          #webgazerFaceFeedbackBox {
-            display: none !important;
-          }
-        `;
-      }
+      // Video is already hidden via the injected stylesheet.
+      // WebGazer continues tracking in the background.
 
       let gazeCount = 0;
 
