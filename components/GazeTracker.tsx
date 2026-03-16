@@ -131,13 +131,32 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
   // After calibration: hide video, attach gaze listener, switch to tracking
   const handleCalibrationComplete = useCallback(() => {
     try {
-      // Hide the webcam preview after calibration by swapping the
-      // CSS to display:none. WebGazer's gaze pipeline should keep
-      // running even with the video hidden at this point.
+      // Make the webcam nearly invisible after calibration.
+      // We can NOT use display:none or opacity:0 because the browser
+      // stops processing video frames, which kills WebGazer's gaze
+      // pipeline. Keep the video at a real size (WebGazer may use CSS
+      // dimensions for frame capture) but nearly transparent.
       const posStyle = document.getElementById('webgazer-position-styles');
       if (posStyle) {
         posStyle.textContent = `
-          #webgazerVideoContainer,
+          #webgazerVideoContainer {
+            position: fixed !important;
+            bottom: 0 !important;
+            right: 0 !important;
+            top: auto !important;
+            left: auto !important;
+            width: 120px !important;
+            height: 90px !important;
+            overflow: hidden !important;
+            opacity: 0.01 !important;
+            pointer-events: none !important;
+            z-index: -1 !important;
+          }
+          #webgazerVideoFeed {
+            width: 120px !important;
+            height: 90px !important;
+            object-fit: cover !important;
+          }
           #webgazerFaceOverlay,
           #webgazerFaceFeedbackBox {
             display: none !important;
