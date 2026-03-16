@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "@mediapipe/face_mesh": "^0.4.1633559619",
     "next": "^13.5.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
