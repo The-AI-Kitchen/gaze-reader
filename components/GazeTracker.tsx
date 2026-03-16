@@ -116,6 +116,43 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
           .showFaceOverlay(false)
           .showFaceFeedbackBox(false);
 
+        // Set gaze listener BEFORE begin() — this is critical.
+        // In the working test page, the listener must be attached
+        // before begin() for WebGazer to start sending data.
+        let gazeCount = 0;
+        let nullCount = 0;
+        window.webgazer.setGazeListener(
+          (data: { x: number; y: number } | null) => {
+            if (!data) {
+              nullCount++;
+              if (nullCount <= 3 || nullCount % 100 === 0) {
+                setDebugInfo(`Gaze: ${nullCount} nulls, ${gazeCount} points`);
+              }
+              return;
+            }
+
+            gazeCount++;
+            if (gazeCount <= 5) {
+              console.log(`Gaze point #${gazeCount}:`, Math.round(data.x), Math.round(data.y));
+              setDebugInfo(`Gaze point #${gazeCount}: (${Math.round(data.x)}, ${Math.round(data.y)})`);
+            } else if (gazeCount % 50 === 0) {
+              setDebugInfo(`Gaze: ${gazeCount} points (${Math.round(data.x)}, ${Math.round(data.y)})`);
+            }
+
+            gazeBuffer.current.push({ x: data.x, y: data.y });
+            if (gazeBuffer.current.length > 20) {
+              gazeBuffer.current = gazeBuffer.current.slice(-20);
+            }
+            const smoothed = smoothGaze(gazeBuffer.current, 5);
+            onGazeRef.current(smoothed.x, smoothed.y, Date.now());
+
+            if (dotRef.current) {
+              dotRef.current.style.left = `${smoothed.x}px`;
+              dotRef.current.style.top = `${smoothed.y}px`;
+            }
+          }
+        );
+
         const beginPromise = window.webgazer.begin();
         const timeoutPromise = new Promise<void>((_, reject) =>
           setTimeout(() => reject(new Error('begin() timeout')), 15000)
@@ -145,55 +182,12 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
     return () => { cancelled = true; };
   }, [startMouseMode]);
 
-  // After calibration: hide video, attach gaze listener, switch to tracking
+  // After calibration: switch to tracking mode. Gaze listener is
+  // already attached (set before begin()), so we just change the mode.
   const handleCalibrationComplete = useCallback(() => {
     try {
-      // Keep the webcam visible after calibration. WebGazer needs
-      // the video element fully rendered to keep processing frames.
-      // Don't change the CSS at all — leave it as the small 120x90
-      // preview in the bottom-right corner from calibration.
-
-      let gazeCount = 0;
-      let nullCount = 0;
-
-      setDebugInfo('Gaze listener attached. Waiting for data...');
-
-      // Attach our gaze listener (WebGazer is already running)
-      window.webgazer.setGazeListener(
-        (data: { x: number; y: number } | null) => {
-          if (!data) {
-            nullCount++;
-            if (nullCount <= 3 || nullCount % 100 === 0) {
-              console.log(`Gaze callback #${nullCount}: null (no face detected)`);
-              setDebugInfo(`Gaze: ${nullCount} null callbacks (no face). Points: ${gazeCount}`);
-            }
-            return;
-          }
-
-          // Log first few gaze points for debugging
-          gazeCount++;
-          if (gazeCount <= 5) {
-            console.log(`Gaze point #${gazeCount}:`, Math.round(data.x), Math.round(data.y));
-            setDebugInfo(`Gaze point #${gazeCount}: (${Math.round(data.x)}, ${Math.round(data.y)})`);
-          } else if (gazeCount % 50 === 0) {
-            setDebugInfo(`Gaze active: ${gazeCount} points. Last: (${Math.round(data.x)}, ${Math.round(data.y)})`);
-          }
-
-          gazeBuffer.current.push({ x: data.x, y: data.y });
-          if (gazeBuffer.current.length > 20) {
-            gazeBuffer.current = gazeBuffer.current.slice(-20);
-          }
-          const smoothed = smoothGaze(gazeBuffer.current, 5);
-          onGazeRef.current(smoothed.x, smoothed.y, Date.now());
-
-          if (dotRef.current) {
-            dotRef.current.style.left = `${smoothed.x}px`;
-            dotRef.current.style.top = `${smoothed.y}px`;
-          }
-        }
-      );
-
       setMode('tracking');
+      setDebugInfo('Calibration complete. Gaze tracking active.');
       console.log('Gaze tracking active - look around the screen to test');
     } catch (err) {
       console.warn('Failed to attach gaze listener:', err);
