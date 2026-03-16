@@ -7,15 +7,47 @@ export interface AskPayload {
   surroundingContext: string;
   paperTitle: string;
   paperAbstract: string;
+  fullPaperText: string;
+}
+
+/**
+ * Build the full paper text once (truncated to ~12k chars to stay within
+ * reasonable token limits while giving Claude the whole picture).
+ */
+export function buildFullPaperText(chunks: Chunk[]): string {
+  let text = '';
+  for (const chunk of chunks) {
+    text += chunk.text + '\n\n';
+    // Cap at ~12k chars (~3k tokens) to keep requests fast
+    if (text.length > 12000) {
+      text += '[... remainder of paper truncated for brevity ...]';
+      break;
+    }
+  }
+  return text;
 }
 
 export function buildContext(
-  targetChunkId: string,
+  targetChunkId: string | null,
   allChunks: Chunk[],
   paperTitle: string,
   paperAbstract: string,
-  question: string
+  question: string,
+  fullPaperText: string
 ): AskPayload {
+  // No specific target: general question about the whole paper
+  if (!targetChunkId) {
+    return {
+      question,
+      targetText: '',
+      targetType: 'general',
+      surroundingContext: '',
+      paperTitle,
+      paperAbstract,
+      fullPaperText,
+    };
+  }
+
   const targetIndex = allChunks.findIndex((c) => c.id === targetChunkId);
   const target = allChunks[targetIndex];
 
@@ -23,10 +55,11 @@ export function buildContext(
     return {
       question,
       targetText: '',
-      targetType: 'paragraph',
+      targetType: 'general',
       surroundingContext: '',
       paperTitle,
       paperAbstract,
+      fullPaperText,
     };
   }
 
@@ -46,5 +79,6 @@ export function buildContext(
     surroundingContext: surrounding,
     paperTitle,
     paperAbstract,
+    fullPaperText,
   };
 }

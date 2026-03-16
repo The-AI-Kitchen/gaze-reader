@@ -30,17 +30,29 @@ export async function POST(req: NextRequest) {
       surroundingContext,
       paperTitle,
       paperAbstract,
+      fullPaperText,
     } = body;
 
-    if (!question || !targetText) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!question) {
+      return NextResponse.json({ error: 'Missing question' }, { status: 400 });
     }
 
-    const systemPrompt = `You are a scholarly reading assistant. The user is reading an academic paper and looking at a specific passage. They have asked you a question about what they're looking at.
+    // Build the system prompt with full paper context
+    const isGeneral = !targetText || targetType === 'general';
+
+    let systemPrompt = `You are a scholarly reading assistant. The user is reading an academic paper and has asked you a question.
 
 Paper: ${paperTitle}
 Abstract: ${paperAbstract}
 
+Full paper text (may be truncated):
+---
+${fullPaperText || '(not available)'}
+---
+`;
+
+    if (!isGeneral) {
+      systemPrompt += `
 The user is currently looking at this ${targetType}:
 ---
 ${targetText}
@@ -51,7 +63,13 @@ Surrounding context:
 ${surroundingContext}
 ---
 
-Answer the user's question about this specific passage. Be concise (2-4 paragraphs max). If the target is a reference, explain what the referenced work is about and how it relates to the current paper. If the target is a methods description, explain the method clearly. Use plain language where possible.`;
+Answer the user's question about this specific passage, drawing on your understanding of the full paper when relevant.`;
+    } else {
+      systemPrompt += `
+The user has asked a general question about the paper (not about a specific passage). Answer based on the full paper text above.`;
+    }
+
+    systemPrompt += ` Be concise (2-4 paragraphs max). If the target is a reference, explain what the referenced work is about and how it relates to the current paper. If the target is a methods description, explain the method clearly. Use plain language where possible.`;
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',

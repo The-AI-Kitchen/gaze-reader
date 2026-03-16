@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { type GazeTarget } from '@/lib/gaze-utils';
 import { type Chunk } from '@/lib/paper-parser';
-import { buildContext } from '@/lib/context-builder';
+import { buildContext, buildFullPaperText } from '@/lib/context-builder';
 
 interface QAPair {
   question: string;
@@ -42,6 +42,14 @@ export default function QueryPanel({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const responseRef = useRef<HTMLDivElement>(null);
+
+  // Pre-compute full paper text once for Claude context
+  const fullPaperText = useRef('');
+  useEffect(() => {
+    if (chunks.length > 0 && !fullPaperText.current) {
+      fullPaperText.current = buildFullPaperText(chunks);
+    }
+  }, [chunks]);
 
   // Voice input setup
   useEffect(() => {
@@ -89,18 +97,21 @@ export default function QueryPanel({
   const handleSubmit = useCallback(
     async (questionText?: string) => {
       const question = questionText || input;
-      if (!question.trim() || !currentTarget || loading) return;
+      if (!question.trim() || loading) return;
 
       setLoading(true);
       setCurrentResponse('');
-      onLockChunk(currentTarget.chunkId);
+      if (currentTarget) {
+        onLockChunk(currentTarget.chunkId);
+      }
 
       const payload = buildContext(
-        currentTarget.chunkId,
+        currentTarget?.chunkId || null,
         chunks,
         paperTitle,
         paperAbstract,
-        question.trim()
+        question.trim(),
+        fullPaperText.current
       );
 
       try {
@@ -127,7 +138,7 @@ export default function QueryPanel({
         }
 
         setHistory((prev) => [
-          { question: question.trim(), answer: fullResponse, chunkId: currentTarget.chunkId },
+          { question: question.trim(), answer: fullResponse, chunkId: currentTarget?.chunkId || 'general' },
           ...prev,
         ]);
       } catch (err) {
@@ -174,7 +185,7 @@ export default function QueryPanel({
           <button
             key={action}
             onClick={() => handleSubmit(action)}
-            disabled={!currentTarget || loading}
+            disabled={loading}
             className="px-3 py-1.5 text-xs bg-white border border-gray-200 rounded-full
               hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700
               disabled:opacity-40 disabled:cursor-not-allowed
@@ -211,7 +222,7 @@ export default function QueryPanel({
         </button>
         <button
           onClick={() => handleSubmit()}
-          disabled={!input.trim() || !currentTarget || loading}
+          disabled={!input.trim() || loading}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium
             hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >

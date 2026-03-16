@@ -80,7 +80,7 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
         if (videoEl) {
           videoEl.style.position = 'fixed';
           videoEl.style.bottom = '10px';
-          videoEl.style.left = '10px';
+          videoEl.style.right = '10px';
           videoEl.style.width = '160px';
           videoEl.style.height = '120px';
           videoEl.style.borderRadius = '8px';
