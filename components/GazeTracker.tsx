@@ -50,9 +50,9 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
 
     const init = async () => {
       // 0. Inject CSS to hide WebGazer's UI BEFORE it even loads.
-      //    We use opacity:0 + pointer-events:none + offscreen positioning
-      //    instead of display:none, because display:none can prevent
-      //    some browsers from processing the video stream.
+      //    Only use opacity:0 — don't change size or position, because
+      //    WebGazer may read the video element's CSS dimensions when
+      //    capturing frames for face detection.
       const styleId = 'webgazer-hide-styles';
       if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
@@ -61,12 +61,6 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
           #webgazerVideoContainer {
             opacity: 0 !important;
             pointer-events: none !important;
-            position: fixed !important;
-            top: -9999px !important;
-            left: -9999px !important;
-            width: 1px !important;
-            height: 1px !important;
-            overflow: hidden !important;
           }
           #webgazerFaceOverlay,
           #webgazerFaceFeedbackBox {
