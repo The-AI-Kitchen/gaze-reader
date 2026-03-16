@@ -7,8 +7,8 @@ interface CalibrationOverlayProps {
   onSkip: () => void;
 }
 
-// 3x3 grid with generous padding from all edges
-// Positions are in viewport units so they don't get squeezed
+// 8-dot calibration grid. Bottom-right corner is omitted because
+// the webcam preview sits there (WebGazer needs it visible).
 const DOT_POSITIONS = [
   { top: '12vh', left: '8vw' },
   { top: '12vh', left: '50vw' },
@@ -18,7 +18,7 @@ const DOT_POSITIONS = [
   { top: '50vh', left: '92vw' },
   { top: '88vh', left: '8vw' },
   { top: '88vh', left: '50vw' },
-  { top: '88vh', left: '92vw' },
+  // bottom-right dot removed — webcam preview occupies that corner
 ];
 
 export default function CalibrationOverlay({
@@ -33,7 +33,7 @@ export default function CalibrationOverlay({
     next.add(index);
     setClicked(next);
 
-    if (next.size === 9) {
+    if (next.size === DOT_POSITIONS.length) {
       setDone(true);
       setTimeout(onComplete, 1000);
     }
@@ -74,7 +74,7 @@ export default function CalibrationOverlay({
             zIndex: 10000,
           }}>
             <p className="text-base text-gray-700 font-medium">
-              Look at each dot and click it. ({clicked.size}/9)
+              Look at each dot and click it. ({clicked.size}/{DOT_POSITIONS.length})
             </p>
             <p className="text-sm text-gray-400 mt-1">
               This calibrates the eye tracker.

@@ -49,6 +49,44 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
     let cancelled = false;
 
     const init = async () => {
+      // 0. Inject CSS to pin WebGazer's video to bottom-right corner,
+      //    small but VISIBLE. The video must stay rendered (not opacity:0,
+      //    not display:none) for the browser to keep processing frames.
+      //    CSS !important in a <style> beats WebGazer's per-frame inline
+      //    style updates. The bottom-right calibration dot is removed
+      //    to make room (see CalibrationOverlay).
+      const styleId = 'webgazer-position-styles';
+      if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+          #webgazerVideoContainer {
+            position: fixed !important;
+            bottom: 8px !important;
+            right: 8px !important;
+            top: auto !important;
+            left: auto !important;
+            width: 120px !important;
+            height: 90px !important;
+            z-index: 10002 !important;
+            border-radius: 8px !important;
+            border: 2px solid #3b82f6 !important;
+            overflow: hidden !important;
+            pointer-events: none !important;
+          }
+          #webgazerVideoFeed {
+            width: 120px !important;
+            height: 90px !important;
+            object-fit: cover !important;
+          }
+          #webgazerFaceOverlay,
+          #webgazerFaceFeedbackBox {
+            display: none !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
       // 1. Load WebGazer script
       if (!window.webgazer) {
         const script = document.createElement('script');
@@ -67,10 +105,7 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
         }
       }
 
-      // 2. Start WebGazer — keep video VISIBLE during calibration.
-      //    WebGazer needs the video element rendered for frame capture.
-      //    We use WebGazer's own API to hide overlays, and keep the
-      //    video small in the bottom-right corner (away from all dots).
+      // 2. Start WebGazer
       try {
         await window.webgazer
           .setRegression('ridge')
@@ -78,17 +113,6 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
           .showFaceOverlay(false)
           .showFaceFeedbackBox(false)
           .begin();
-
-        // Make the webcam preview tiny. WebGazer positions it at
-        // top-left and overrides styles every frame, so we just
-        // let it stay there but shrink it to 80x60. At that size
-        // it fits above-left of the nearest calibration dot (8vw, 12vh).
-        // The video MUST stay visible for the browser to process frames.
-        const videoEl = document.getElementById('webgazerVideoFeed') as HTMLVideoElement;
-        if (videoEl) {
-          videoEl.width = 80;
-          videoEl.height = 60;
-        }
 
         console.log('WebGazer started, showing calibration');
 
@@ -107,14 +131,19 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
   // After calibration: hide video, attach gaze listener, switch to tracking
   const handleCalibrationComplete = useCallback(() => {
     try {
-      // Hide video after calibration using WebGazer's API.
-      // We keep it visible during calibration so the browser
-      // processes frames (needed for face detection to work).
-      try {
-        window.webgazer.showVideo(false);
-      } catch {}
-      const videoContainer = document.getElementById('webgazerVideoContainer');
-      if (videoContainer) videoContainer.style.display = 'none';
+      // Hide the webcam preview after calibration by swapping the
+      // CSS to display:none. WebGazer's gaze pipeline should keep
+      // running even with the video hidden at this point.
+      const posStyle = document.getElementById('webgazer-position-styles');
+      if (posStyle) {
+        posStyle.textContent = `
+          #webgazerVideoContainer,
+          #webgazerFaceOverlay,
+          #webgazerFaceFeedbackBox {
+            display: none !important;
+          }
+        `;
+      }
 
       let gazeCount = 0;
 
