@@ -634,7 +634,7 @@ async function startWebGazer() {
     // Load the script
     await new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = 'https://webgazer.cs.brown.edu/webgazer.js';
+      script.src = '/webgazer.js';
       script.onload = () => {
         log('WebGazer script loaded successfully');
         resolve();
