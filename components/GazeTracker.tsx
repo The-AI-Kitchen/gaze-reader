@@ -74,39 +74,44 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
           .showPredictionPoints(false)
           .begin();
 
-        // Small webcam preview during calibration so user can confirm
-        // their face is detected. Position at bottom-center to avoid
-        // all 9 calibration dots (which sit at 8/50/92 vw × 12/50/88 vh).
-        const videoContainer = document.getElementById('webgazerVideoContainer');
-        if (videoContainer) {
-          videoContainer.style.position = 'fixed';
-          videoContainer.style.top = 'auto';
-          videoContainer.style.left = '50%';
-          videoContainer.style.bottom = '8px';
-          videoContainer.style.transform = 'translateX(-50%)';
-          videoContainer.style.width = '160px';
-          videoContainer.style.height = '120px';
-          videoContainer.style.zIndex = '10002';
-          videoContainer.style.overflow = 'hidden';
-          videoContainer.style.borderRadius = '8px';
-          videoContainer.style.border = '2px solid #3b82f6';
+        // WebGazer continuously repositions its video container on each
+        // animation frame, so inline styles get overridden immediately.
+        // Inject a <style> with !important rules to force our layout.
+        const styleId = 'webgazer-override-styles';
+        if (!document.getElementById(styleId)) {
+          const style = document.createElement('style');
+          style.id = styleId;
+          style.textContent = `
+            #webgazerVideoContainer {
+              position: fixed !important;
+              top: auto !important;
+              left: 50% !important;
+              bottom: 8px !important;
+              right: auto !important;
+              transform: translateX(-50%) !important;
+              width: 160px !important;
+              height: 120px !important;
+              z-index: 10002 !important;
+              overflow: hidden !important;
+              border-radius: 8px !important;
+              border: 2px solid #3b82f6 !important;
+            }
+            #webgazerVideoFeed {
+              width: 160px !important;
+              height: 120px !important;
+              object-fit: cover !important;
+              opacity: 0.9 !important;
+              position: relative !important;
+              top: 0 !important;
+              left: 0 !important;
+            }
+            #webgazerFaceOverlay,
+            #webgazerFaceFeedbackBox {
+              display: none !important;
+            }
+          `;
+          document.head.appendChild(style);
         }
-        const videoEl = document.getElementById('webgazerVideoFeed') as HTMLVideoElement;
-        if (videoEl) {
-          videoEl.style.width = '160px';
-          videoEl.style.height = '120px';
-          videoEl.style.objectFit = 'cover';
-          videoEl.style.opacity = '0.9';
-          // Clear any positioning WebGazer sets on the video itself
-          videoEl.style.position = 'relative';
-          videoEl.style.top = '0';
-          videoEl.style.left = '0';
-        }
-        // Hide the default face overlay/feedback elements
-        const faceOverlay = document.getElementById('webgazerFaceOverlay');
-        const faceFeedback = document.getElementById('webgazerFaceFeedbackBox');
-        if (faceOverlay) faceOverlay.style.display = 'none';
-        if (faceFeedback) faceFeedback.style.display = 'none';
 
         console.log('WebGazer started, showing calibration');
 
@@ -125,15 +130,19 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
   // After calibration: hide video, attach gaze listener, switch to tracking
   const handleCalibrationComplete = useCallback(() => {
     try {
-      // Hide the webcam preview now that calibration is done
-      const videoEl = document.getElementById('webgazerVideoFeed') as HTMLVideoElement;
-      if (videoEl) videoEl.style.display = 'none';
-      const videoContainer = document.getElementById('webgazerVideoContainer');
-      if (videoContainer) videoContainer.style.display = 'none';
-      const faceOverlay = document.getElementById('webgazerFaceOverlay');
-      if (faceOverlay) faceOverlay.style.display = 'none';
-      const faceFeedback = document.getElementById('webgazerFaceFeedbackBox');
-      if (faceFeedback) faceFeedback.style.display = 'none';
+      // Hide the webcam preview now that calibration is done.
+      // Replace the positioning overrides with a hide-all rule.
+      const overrideStyle = document.getElementById('webgazer-override-styles');
+      if (overrideStyle) {
+        overrideStyle.textContent = `
+          #webgazerVideoContainer,
+          #webgazerVideoFeed,
+          #webgazerFaceOverlay,
+          #webgazerFaceFeedbackBox {
+            display: none !important;
+          }
+        `;
+      }
 
       let gazeCount = 0;
 
