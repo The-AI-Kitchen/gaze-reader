@@ -74,19 +74,33 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
           .showPredictionPoints(false)
           .begin();
 
-        // Small webcam preview in corner during calibration so user
-        // can confirm their face is detected
+        // Small webcam preview during calibration so user can confirm
+        // their face is detected. Position at bottom-center to avoid
+        // all 9 calibration dots (which sit at 8/50/92 vw × 12/50/88 vh).
+        const videoContainer = document.getElementById('webgazerVideoContainer');
+        if (videoContainer) {
+          videoContainer.style.position = 'fixed';
+          videoContainer.style.top = 'auto';
+          videoContainer.style.left = '50%';
+          videoContainer.style.bottom = '8px';
+          videoContainer.style.transform = 'translateX(-50%)';
+          videoContainer.style.width = '160px';
+          videoContainer.style.height = '120px';
+          videoContainer.style.zIndex = '10002';
+          videoContainer.style.overflow = 'hidden';
+          videoContainer.style.borderRadius = '8px';
+          videoContainer.style.border = '2px solid #3b82f6';
+        }
         const videoEl = document.getElementById('webgazerVideoFeed') as HTMLVideoElement;
         if (videoEl) {
-          videoEl.style.position = 'fixed';
-          videoEl.style.bottom = '10px';
-          videoEl.style.right = '10px';
           videoEl.style.width = '160px';
           videoEl.style.height = '120px';
-          videoEl.style.borderRadius = '8px';
-          videoEl.style.border = '2px solid #3b82f6';
-          videoEl.style.zIndex = '10002';
+          videoEl.style.objectFit = 'cover';
           videoEl.style.opacity = '0.9';
+          // Clear any positioning WebGazer sets on the video itself
+          videoEl.style.position = 'relative';
+          videoEl.style.top = '0';
+          videoEl.style.left = '0';
         }
         // Hide the default face overlay/feedback elements
         const faceOverlay = document.getElementById('webgazerFaceOverlay');
