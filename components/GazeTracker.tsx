@@ -20,6 +20,7 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
     'loading'
   );
   const [showDot, setShowDot] = useState(true);
+  const [debugInfo, setDebugInfo] = useState('');
   const gazeBuffer = useRef<Array<{ x: number; y: number }>>([]);
   const dotRef = useRef<HTMLDivElement>(null);
   const onGazeRef = useRef(onGaze);
@@ -115,12 +116,16 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
           .begin();
 
         console.log('WebGazer started, showing calibration');
+        if (!cancelled) setDebugInfo('WebGazer initialized OK. Calibrating...');
 
         // 3. Show calibration (WebGazer is running, clicks train the model)
         if (!cancelled) setMode('calibrating');
       } catch (err) {
         console.warn('WebGazer failed to start:', err);
-        if (!cancelled) startMouseMode();
+        if (!cancelled) {
+          setDebugInfo(`WebGazer FAILED: ${err}`);
+          startMouseMode();
+        }
       }
     };
 
@@ -165,16 +170,29 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
       }
 
       let gazeCount = 0;
+      let nullCount = 0;
+
+      setDebugInfo('Gaze listener attached. Waiting for data...');
 
       // Attach our gaze listener (WebGazer is already running)
       window.webgazer.setGazeListener(
         (data: { x: number; y: number } | null) => {
-          if (!data) return;
+          if (!data) {
+            nullCount++;
+            if (nullCount <= 3 || nullCount % 100 === 0) {
+              console.log(`Gaze callback #${nullCount}: null (no face detected)`);
+              setDebugInfo(`Gaze: ${nullCount} null callbacks (no face). Points: ${gazeCount}`);
+            }
+            return;
+          }
 
           // Log first few gaze points for debugging
           gazeCount++;
           if (gazeCount <= 5) {
             console.log(`Gaze point #${gazeCount}:`, Math.round(data.x), Math.round(data.y));
+            setDebugInfo(`Gaze point #${gazeCount}: (${Math.round(data.x)}, ${Math.round(data.y)})`);
+          } else if (gazeCount % 50 === 0) {
+            setDebugInfo(`Gaze active: ${gazeCount} points. Last: (${Math.round(data.x)}, ${Math.round(data.y)})`);
           }
 
           gazeBuffer.current.push({ x: data.x, y: data.y });
@@ -283,6 +301,13 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
               {showDot ? 'Hide dot' : 'Show dot'}
             </button>
           </>
+        )}
+        {/* Debug info — shows gaze pipeline status on screen */}
+        {debugInfo && (
+          <span className="px-2 py-0.5 bg-purple-50 text-purple-600 rounded text-xs font-mono max-w-xs truncate"
+                title={debugInfo}>
+            {debugInfo}
+          </span>
         )}
       </div>
     </>
