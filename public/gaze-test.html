@@ -689,10 +689,22 @@ async function startWebGazer() {
     webgazer.setGazeListener(onGaze);
     log('Gaze listener set');
 
-    // Begin
+    // Begin — with a timeout because begin() sometimes hangs
     log('Calling webgazer.begin()...');
-    await webgazer.begin();
-    log('webgazer.begin() resolved successfully!');
+    const beginPromise = webgazer.begin();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('begin() timed out after 15s')), 15000)
+    );
+
+    try {
+      await Promise.race([beginPromise, timeoutPromise]);
+      log('webgazer.begin() resolved successfully!');
+    } catch (timeoutErr) {
+      log('begin() did not resolve in time, proceeding anyway: ' + timeoutErr.message, 'warn');
+      // WebGazer may still be initializing in the background but
+      // the video and face detection are already running (as shown
+      // by Face detected: YES). Proceed to calibration.
+    }
 
     // Force video visible
     ensureVideoVisible();
