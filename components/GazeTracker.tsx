@@ -30,7 +30,7 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
     setMode('mouse');
   }, []);
 
-  // Mouse mode event listener (separate effect so it cleans up properly)
+  // Mouse mode event listener
   useEffect(() => {
     if (mode !== 'mouse') return;
     const handler = (e: MouseEvent) => {
@@ -44,12 +44,12 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
     return () => window.removeEventListener('mousemove', handler);
   }, [mode]);
 
-  // Load WebGazer and check webcam on mount
+  // Load WebGazer, start it, THEN show calibration
   useEffect(() => {
     let cancelled = false;
 
     const init = async () => {
-      // Load WebGazer script if needed
+      // 1. Load WebGazer script
       if (!window.webgazer) {
         const script = document.createElement('script');
         script.src = 'https://webgazer.cs.brown.edu/webgazer.js';
@@ -67,14 +67,22 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
         }
       }
 
-      // Check webcam access
+      // 2. Start WebGazer (this requests webcam and starts face tracking)
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        // Release the stream so WebGazer can claim it
-        stream.getTracks().forEach((t) => t.stop());
+        await window.webgazer
+          .setRegression('ridge')
+          .showVideo(false)
+          .showFaceOverlay(false)
+          .showFaceFeedbackBox(false)
+          .showPredictionPoints(false)
+          .begin();
+
+        console.log('WebGazer started successfully');
+
+        // 3. Now show calibration (WebGazer is running, so clicks train the model)
         if (!cancelled) setMode('calibrating');
-      } catch {
-        console.warn('Webcam unavailable, using mouse mode');
+      } catch (err) {
+        console.warn('WebGazer failed to start:', err);
         if (!cancelled) startMouseMode();
       }
     };
@@ -83,18 +91,10 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
     return () => { cancelled = true; };
   }, [startMouseMode]);
 
-  const handleCalibrationComplete = useCallback(async () => {
+  // After calibration: attach gaze listener and switch to tracking
+  const handleCalibrationComplete = useCallback(() => {
     try {
-      // Start WebGazer first, then attach listener
-      await window.webgazer
-        .setRegression('ridge')
-        .showVideo(false)
-        .showFaceOverlay(false)
-        .showFaceFeedbackBox(false)
-        .showPredictionPoints(false)
-        .begin();
-
-      // Now attach the gaze listener
+      // Attach our gaze listener (WebGazer is already running)
       window.webgazer.setGazeListener(
         (data: { x: number; y: number } | null) => {
           if (!data) return;
@@ -113,21 +113,29 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
       );
 
       setMode('tracking');
+      console.log('Gaze tracking active');
     } catch (err) {
-      console.warn('WebGazer start failed:', err);
+      console.warn('Failed to attach gaze listener:', err);
       startMouseMode();
     }
   }, [startMouseMode]);
 
   const handleRecalibrate = () => {
-    if (window.webgazer) {
-      try { window.webgazer.pause(); } catch {}
-    }
+    // Clear old calibration data
     gazeBuffer.current = [];
+    if (window.webgazer) {
+      try {
+        window.webgazer.clearData();
+      } catch {}
+    }
     setMode('calibrating');
   };
 
   const handleCalibrationSkip = () => {
+    // Stop WebGazer if it was running
+    if (window.webgazer) {
+      try { window.webgazer.end(); } catch {}
+    }
     startMouseMode();
   };
 
@@ -140,7 +148,7 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
         />
       )}
 
-      {/* Gaze indicator dot - visible by default so users can verify tracking */}
+      {/* Gaze indicator dot */}
       {showDot && (mode === 'tracking' || mode === 'mouse') && (
         <div
           ref={dotRef}
@@ -162,7 +170,7 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
       <div className="flex items-center gap-3 text-sm">
         {mode === 'mouse' && (
           <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium"
-                title="Eye tracking unavailable. The cursor position is used instead of gaze.">
+                title="Eye tracking unavailable. Hover your cursor over paragraphs instead.">
             MOUSE MODE (no webcam)
           </span>
         )}
@@ -174,6 +182,11 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
         {mode === 'loading' && (
           <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs font-medium">
             Starting eye tracker...
+          </span>
+        )}
+        {mode === 'calibrating' && (
+          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+            Calibrating...
           </span>
         )}
         {(mode === 'tracking' || mode === 'mouse') && (
