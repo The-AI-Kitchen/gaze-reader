@@ -49,6 +49,33 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
     let cancelled = false;
 
     const init = async () => {
+      // 0. Inject CSS to hide WebGazer's UI BEFORE it even loads.
+      //    We use opacity:0 + pointer-events:none + offscreen positioning
+      //    instead of display:none, because display:none can prevent
+      //    some browsers from processing the video stream.
+      const styleId = 'webgazer-hide-styles';
+      if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+          #webgazerVideoContainer {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            position: fixed !important;
+            top: -9999px !important;
+            left: -9999px !important;
+            width: 1px !important;
+            height: 1px !important;
+            overflow: hidden !important;
+          }
+          #webgazerFaceOverlay,
+          #webgazerFaceFeedbackBox {
+            display: none !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
       // 1. Load WebGazer script
       if (!window.webgazer) {
         const script = document.createElement('script');
@@ -67,32 +94,12 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
         }
       }
 
-      // 2. Start WebGazer (video element is created but hidden via CSS)
+      // 2. Start WebGazer (video is captured but hidden by CSS above)
       try {
         await window.webgazer
           .setRegression('ridge')
           .showPredictionPoints(false)
           .begin();
-
-        // Hide all WebGazer UI elements. The video stream still runs
-        // behind the scenes for face/gaze detection — it doesn't need
-        // to be visible. We use a <style> because WebGazer aggressively
-        // repositions its elements on every animation frame, overriding
-        // any inline styles we set.
-        const styleId = 'webgazer-hide-styles';
-        if (!document.getElementById(styleId)) {
-          const style = document.createElement('style');
-          style.id = styleId;
-          style.textContent = `
-            #webgazerVideoContainer,
-            #webgazerVideoFeed,
-            #webgazerFaceOverlay,
-            #webgazerFaceFeedbackBox {
-              display: none !important;
-            }
-          `;
-          document.head.appendChild(style);
-        }
 
         console.log('WebGazer started, showing calibration');
 
