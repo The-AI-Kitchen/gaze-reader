@@ -143,8 +143,8 @@ export default function QueryPanel({
   );
 
   const snippetText = currentTarget?.text
-    ? currentTarget.text.length > 100
-      ? currentTarget.text.slice(0, 100) + '...'
+    ? currentTarget.text.length > 300
+      ? currentTarget.text.slice(0, 300) + '...'
       : currentTarget.text
     : null;
 

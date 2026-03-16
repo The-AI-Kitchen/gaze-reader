@@ -67,19 +67,36 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
         }
       }
 
-      // 2. Start WebGazer (this requests webcam and starts face tracking)
+      // 2. Start WebGazer with video visible (needed for face detection to init)
       try {
         await window.webgazer
           .setRegression('ridge')
-          .showVideo(false)
-          .showFaceOverlay(false)
-          .showFaceFeedbackBox(false)
           .showPredictionPoints(false)
           .begin();
 
-        console.log('WebGazer started successfully');
+        // Small webcam preview in corner during calibration so user
+        // can confirm their face is detected
+        const videoEl = document.getElementById('webgazerVideoFeed') as HTMLVideoElement;
+        if (videoEl) {
+          videoEl.style.position = 'fixed';
+          videoEl.style.bottom = '10px';
+          videoEl.style.left = '10px';
+          videoEl.style.width = '160px';
+          videoEl.style.height = '120px';
+          videoEl.style.borderRadius = '8px';
+          videoEl.style.border = '2px solid #3b82f6';
+          videoEl.style.zIndex = '10002';
+          videoEl.style.opacity = '0.9';
+        }
+        // Hide the default face overlay/feedback elements
+        const faceOverlay = document.getElementById('webgazerFaceOverlay');
+        const faceFeedback = document.getElementById('webgazerFaceFeedbackBox');
+        if (faceOverlay) faceOverlay.style.display = 'none';
+        if (faceFeedback) faceFeedback.style.display = 'none';
 
-        // 3. Now show calibration (WebGazer is running, so clicks train the model)
+        console.log('WebGazer started, showing calibration');
+
+        // 3. Show calibration (WebGazer is running, clicks train the model)
         if (!cancelled) setMode('calibrating');
       } catch (err) {
         console.warn('WebGazer failed to start:', err);
@@ -91,13 +108,32 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
     return () => { cancelled = true; };
   }, [startMouseMode]);
 
-  // After calibration: attach gaze listener and switch to tracking
+  // After calibration: hide video, attach gaze listener, switch to tracking
   const handleCalibrationComplete = useCallback(() => {
     try {
+      // Hide the webcam preview now that calibration is done
+      const videoEl = document.getElementById('webgazerVideoFeed') as HTMLVideoElement;
+      if (videoEl) videoEl.style.display = 'none';
+      const videoContainer = document.getElementById('webgazerVideoContainer');
+      if (videoContainer) videoContainer.style.display = 'none';
+      const faceOverlay = document.getElementById('webgazerFaceOverlay');
+      if (faceOverlay) faceOverlay.style.display = 'none';
+      const faceFeedback = document.getElementById('webgazerFaceFeedbackBox');
+      if (faceFeedback) faceFeedback.style.display = 'none';
+
+      let gazeCount = 0;
+
       // Attach our gaze listener (WebGazer is already running)
       window.webgazer.setGazeListener(
         (data: { x: number; y: number } | null) => {
           if (!data) return;
+
+          // Log first few gaze points for debugging
+          gazeCount++;
+          if (gazeCount <= 5) {
+            console.log(`Gaze point #${gazeCount}:`, Math.round(data.x), Math.round(data.y));
+          }
+
           gazeBuffer.current.push({ x: data.x, y: data.y });
           if (gazeBuffer.current.length > 20) {
             gazeBuffer.current = gazeBuffer.current.slice(-20);
@@ -113,7 +149,7 @@ export default function GazeTracker({ onGaze }: GazeTrackerProps) {
       );
 
       setMode('tracking');
-      console.log('Gaze tracking active');
+      console.log('Gaze tracking active - look around the screen to test');
     } catch (err) {
       console.warn('Failed to attach gaze listener:', err);
       startMouseMode();
