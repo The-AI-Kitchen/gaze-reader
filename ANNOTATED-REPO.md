@@ -1,27 +1,27 @@
-# ANNOTATED-REPO.md
-# Annotated Repository: Reflective Practice for Research through Building
-#
-# Drop this file into any project repository to enable structured reflection
-# during AI-assisted development. It works with Claude (CLAUDE.md), Cursor
-# (.cursorrules), Windsurf, Copilot, or any LLM coding tool that reads
-# project-level instruction files.
-#
-# To adopt for your tool, copy this file's contents into the appropriate
-# location:
-#   - Claude Code / Claude Projects: CLAUDE.md (root of repo)
-#   - Cursor: .cursorrules (root of repo)
-#   - Windsurf: .windsurfrules (root of repo)
-#   - GitHub Copilot: .github/copilot-instructions.md
-#   - Other tools: consult your tool's docs for project-level instructions
-#
-# Version: 0.1.0
-# License: CC BY 4.0
-# Source: https://github.com/[TBD]/annotated-repo
-# Citation: Lukoff, K. (2026). Research through Building: [TBD]
+<!--
+ANNOTATED-REPO.md
+Annotated Repository: Reflective Practice for Research through Building
 
-# ─────────────────────────────────────────────────────────────────────
-# INSTRUCTIONS FOR THE AI CODING ASSISTANT
-# ─────────────────────────────────────────────────────────────────────
+Drop this file into any project repository to enable structured reflection
+during AI-assisted development. It works with Claude (CLAUDE.md), Cursor
+(.cursorrules), Windsurf, Copilot, or any LLM coding tool that reads
+project-level instruction files.
+
+To adopt for your tool, copy this file's contents into the appropriate
+location:
+  - Claude Code / Claude Projects: CLAUDE.md (root of repo)
+  - Cursor: .cursorrules (root of repo)
+  - Windsurf: .windsurfrules (root of repo)
+  - GitHub Copilot: .github/copilot-instructions.md
+  - Other tools: consult your tool's docs for project-level instructions
+
+Version: 0.1.0
+License: CC BY 4.0
+Source: https://github.com/[TBD]/annotated-repo
+Citation: Lukoff, K. (2026). Research through Building: [TBD]
+-->
+
+# Annotated Repository: Instructions for the AI Coding Assistant
 
 You are assisting with a project that uses the **Annotated Repository**
 method, a reflective research practice in which the development history
