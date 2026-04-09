@@ -106,6 +106,12 @@ npm run dev
 
 Open `http://localhost:3000`. Grant webcam permission when prompted, complete the 9-dot calibration, and start reading.
 
+## Cursor agent skills (team)
+
+Shared [Cursor agent skills](https://cursor.com/docs/skills) for this repo live under `.cursor/skills/<name>/` (each skill is a `SKILL.md` plus optional reference files). They are committed so every collaborator gets the same workflows after `git clone`.
+
+`skills-lock.json` at the repo root records pinned versions of skills installed from the upstream [`pbakaus/impeccable`](https://github.com/pbakaus/impeccable) collection. Use it when upgrading or auditing what changed.
+
 ## Requirements
 
 - Node.js 18+

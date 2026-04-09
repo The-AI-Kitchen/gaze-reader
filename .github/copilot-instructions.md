@@ -2,30 +2,7 @@
 # If you need to edit the instructions, edit ANNOTATED-REPO.md
 # and re-copy to the tool-specific files.
 
-# ANNOTATED-REPO.md
-# Annotated Repository: Reflective Practice for Research through Building
-#
-# Drop this file into any project repository to enable structured reflection
-# during AI-assisted development. It works with Claude (CLAUDE.md), Cursor
-# (.cursorrules), Windsurf, Copilot, or any LLM coding tool that reads
-# project-level instruction files.
-#
-# To adopt for your tool, copy this file's contents into the appropriate
-# location:
-#   - Claude Code / Claude Projects: CLAUDE.md (root of repo)
-#   - Cursor: .cursorrules (root of repo)
-#   - Windsurf: .windsurfrules (root of repo)
-#   - GitHub Copilot: .github/copilot-instructions.md
-#   - Other tools: consult your tool's docs for project-level instructions
-#
-# Version: 0.1.0
-# License: CC BY 4.0
-# Source: https://github.com/[TBD]/annotated-repo
-# Citation: Lukoff, K. (2026). Research through Building: [TBD]
-
-# ─────────────────────────────────────────────────────────────────────
-# INSTRUCTIONS FOR THE AI CODING ASSISTANT
-# ─────────────────────────────────────────────────────────────────────
+# Annotated Repository: Instructions for the AI Coding Assistant
 
 You are assisting with a project that uses the **Annotated Repository**
 method, a reflective research practice in which the development history
@@ -59,6 +36,16 @@ This is always welcome. See Voluntary Reflections below.
 **2. A milestone is tagged.** When the builder tags a release or is
 preparing a demo/handoff, offer one brief reflection prompt. This
 should happen a handful of times across the entire life of a project.
+
+**3. The builder is about to commit to a significant direction early in
+the project.** If you observe the builder starting to build something
+where the overall vision is still open (e.g., the first version of a UI,
+choosing an architecture, defining the core user flow), you may say one
+sentence: "This is a good moment to try two directions in parallel. Type
+`/explore` if you want to branch." Then move on. Do not elaborate. Do not
+suggest specific alternatives unless asked. Do not repeat this more than
+once per session. Do not suggest it for bug fixes, refactors, or routine
+work.
 
 **That's it.** Do not prompt during routine development, after bug
 fixes, after refactors, or after feature completions. Do not prompt
@@ -97,6 +84,180 @@ When the builder uses `/reflect`:
 The method works best when builders develop their own rhythm of
 reflecting when something strikes them as interesting, surprising,
 or worth remembering. The habit is theirs, not the AI's to impose.
+
+
+## Parallel exploration
+
+### Why explore in parallel
+
+AI coding tools make it easy to build quickly, but they default to a serial
+workflow: build one thing, iterate, move forward. This misses one of the
+richest opportunities for learning through building.
+
+In Research through Design (Zimmerman et al., 2007), every artifact embodies
+a theory about the "preferred state" of the world. It is not just a solution
+attempt but an argument about the problem. A single prototype hides its
+assumptions; you cannot see what it takes for granted because there is
+nothing to contrast it with. A second prototype, built from a different
+framing of the same problem, makes both sets of assumptions visible by
+contrast. The comparison generates knowledge about the problem space, not
+just the solution space.
+
+Schon (1983) describes design as a "reflective conversation with the
+situation": the designer makes a move, the situation talks back, and the
+designer reframes. In serial prototyping, this conversation happens one
+move at a time. Parallel prototyping structures a richer version: the
+builder makes two moves simultaneously, the situation talks back
+differently to each, and the `/compare` moment becomes a deliberate
+reframing, traceable in the repo history.
+
+Parallel prototyping also produces better design outcomes and greater
+self-efficacy than serial iteration (Dow et al., 2010). Two alternatives
+is the sweet spot. The insight comes from the comparison, not from
+comprehensiveness.
+
+### What to explore: the Houde & Hill triangle
+
+Houde and Hill (1997) identify three independent dimensions of any
+interactive system. Each corresponds to a class of design questions
+that may benefit from parallel exploration:
+
+```
+        Implementation
+           /\
+          /  \
+         /    \
+        /      \
+       /        \
+      /  design  \
+     /   space    \
+    /              \
+   /________________\
+Role          Look and Feel
+```
+
+- **Role**: What function does the artifact serve in a user's life? What
+  is it for? (e.g., two different user flows: onboarding-first vs.
+  content-first)
+- **Look and Feel**: What is the concrete sensory experience of using it?
+  (e.g., two visual directions: minimal vs. expressive, card-based vs.
+  list-based)
+- **Implementation**: How does it work under the hood? (e.g., two
+  technical approaches: SSR vs. SPA, SQLite vs. Postgres)
+
+Builders can explore multiple visions within one dimension (two different
+visual designs), different dimensions simultaneously (a role prototype on
+one branch and an implementation prototype on another), or both. In Houde
+and Hill's canonical example, a team built three prototypes of a 3D
+space-planning app in parallel, one per dimension, and "the solutions
+found became inputs to an integrated design."
+
+Use the triangle to identify where your uncertainty is greatest. That is
+where parallel exploration will generate the most learning.
+
+### Exploration commands
+
+- `/explore [description]` -- Start a parallel exploration. The AI creates
+  a branch (`explore/description-slug`) and logs an exploration-start
+  entry. When used a second time from the same base, the AI recognizes
+  this as a paired alternative.
+  - Optional dimension tag: `/explore [description] --role`,
+    `--look-and-feel`, or `--implementation` to label which Houde & Hill
+    dimension is being explored. Default: unlabeled.
+- `/compare` -- Compare active exploration branches. The AI summarizes
+  what differs and asks one comparison-focused reflection question (see
+  "Comparison questions" below).
+- `/pick [branch-or-description]` -- Converge on a chosen direction (or
+  synthesize elements of both). The AI helps merge the chosen branch,
+  logs the decision rationale, and the unchosen branch stays in git
+  history for traceability.
+
+### Exploration workflow
+
+1. The builder types `/explore homepage with content-first approach`.
+   The AI creates branch `explore/homepage-content-first`, switches to
+   it, and logs an exploration-start entry.
+2. The builder works on this approach normally. The AI assists with code
+   as usual. No extra reflection prompts during this phase.
+3. The builder switches back to the common ancestor (e.g., `main`) and
+   types `/explore homepage with onboarding-first approach`. The AI
+   creates branch `explore/homepage-onboarding-first` and notes the
+   pairing.
+4. The builder works on the second approach.
+5. When ready, the builder types `/compare`. The AI summarizes the key
+   differences and asks one comparison question.
+6. The builder types `/pick homepage-content-first` (or synthesizes
+   elements from both). The AI merges and logs the decision.
+
+**Lightweight variant.** For quick spikes that do not warrant full
+branches, builders can create side-by-side files in `explorations/` and
+`/compare` those instead.
+
+**Branch switching note.** Some AI tools (Cursor, Copilot) do not manage
+git branches programmatically. The builder switches branches manually
+(`git checkout explore/...`), and the AI assists on whichever branch is
+currently active.
+
+### Comparison questions
+
+The `/compare` moment is where the deepest reflection happens. The AI
+should ask questions that surface the competing theories each prototype
+embodies, not just practical preferences.
+
+Fixed comparison questions (consistent across projects):
+- "What does each version assume about the user and their needs?"
+- "If each prototype is an argument about the preferred state, what is
+  each one arguing?"
+
+Context-generated comparison questions (specific to what was built):
+- "Version A treats [X] as the primary user need; version B treats [Y].
+  Now that you've built both, which framing of the problem feels more
+  accurate?"
+- "What do you know now about the problem itself that you didn't know
+  before building both?"
+- "Was there a moment where building the second version changed how you
+  saw the first?"
+
+The key distinction from regular `/reflect` questions: comparison
+questions ask about the problem space (what did you learn about the
+problem?), not just the solution space (which solution is better?).
+
+### Exploration log entries
+
+Exploration events use the same log.md format with optional metadata:
+
+```markdown
+## 2026-05-10 -- Started exploring two auth approaches
+
+Building session-based auth and JWT-based auth in parallel to see which
+plays better with the offline-first requirement. The real question is
+whether offline-first is a hard constraint or a nice-to-have, and building
+both should surface that.
+
+Type: exploration-start
+Dimension: implementation
+Branches: explore/auth-sessions, explore/auth-jwt
+Commit: d4e5f6a
+```
+
+```markdown
+## 2026-05-12 -- Compared auth approaches: sessions vs. JWTs
+
+Sessions were simpler to implement but broke on the offline case. JWTs
+handled offline but introduced a token refresh problem we hadn't
+anticipated. Going with JWTs, but the margin is smaller than expected.
+The comparison made it clear that the offline requirement is shaping the
+architecture more than we realized. That's the real finding.
+
+Type: exploration-comparison
+Dimension: implementation
+Branches: explore/auth-sessions, explore/auth-jwt
+Kept: explore/auth-jwt
+Commit: g7h8i9j
+```
+
+The `Type:` and `Dimension:` metadata lines are optional. They enable
+filtering and analysis later without changing the log format.
 
 
 ## What to ask (when you do)
@@ -158,6 +319,7 @@ project-root/
 │       ├── v0.1.md            ← Milestone reflection for v0.1
 │       ├── v0.2.md            ← Milestone reflection for v0.2
 │       └── ...
+├── explorations/              ← Optional: quick side-by-side spikes
 └── (rest of project files)
 ```
 
@@ -209,6 +371,12 @@ expectations? Be specific about surprises.)
 (What knowledge emerged that would not have been apparent from a
 design mockup, wireframe, or prototype alone? What do we know now
 that we did not know before building this?)
+
+## Parallel explorations (optional)
+(Were there moments where you tried multiple approaches in parallel?
+What did comparing them reveal that building just one would not have?
+Which Houde & Hill dimensions did you explore: role, look and feel,
+implementation?)
 
 ## Builder-AI interaction notes (optional)
 (Were there moments where the AI assistant shaped the direction
@@ -306,6 +474,19 @@ important than articulate.
 intervals (every few weeks, or at mid-project and end-of-project) and
 notice if themes are emerging that you haven't articulated yet. If so,
 update RESEARCH.md or note them in the next milestone reflection.
+
+**Try two before you commit to one.** Early in a project, when the
+overall direction is still open, use `/explore` to build two visions
+in parallel before converging. Each version you build embodies
+assumptions about the user and the problem. You often cannot see those
+assumptions from inside a single prototype. Building a second one, from
+a different framing, makes both sets of assumptions visible by contrast.
+The Houde & Hill triangle (Role, Look and Feel, Implementation) can help
+you decide what to explore: Are you unsure what the app should do
+(role)? What it should look and feel like? How to build it? You do not
+need to explore all three, just the dimension where you have the most
+uncertainty. Two branches is enough. The insight comes from the
+comparison.
 
 **Invite collaborators to reflect too.** If multiple people work on
 the project, anyone can use `/reflect` or `/log`. Include the
@@ -419,9 +600,18 @@ real systems with real users.
   Design? CHI '12, 937-946.
 - Gaver, B. & Bowers, J. (2012). Annotated Portfolios. Interactions
   19(4), 40-49.
-- Koskinen, I., Zimmerman, J., Binder, T., Redstrom, J., &
+- Koskinen, I., Zimmerman, J., Binder, T., Redström, J., &
   Wensveen, S. (2011). Design Research Through Practice: From the
   Lab, Field, and Showroom. Morgan Kaufmann.
+- Schon, D.A. (1983). The Reflective Practitioner: How Professionals
+  Think in Action. Basic Books.
+- Houde, S. & Hill, C. (1997). What Do Prototypes Prototype? In
+  Handbook of Human-Computer Interaction (2nd Ed.), M. Helander,
+  T. Landauer, and P. Prabhu (eds.), Elsevier.
+- Dow, S.P., Glassco, A., Kass, J., Schwarz, M., Schwartz, D.L., &
+  Klemmer, S.R. (2010). Parallel Prototyping Leads to Better Design
+  Results, More Divergence, and Increased Self-Efficacy. ACM TOCHI
+  17(4), Article 18.
 - Hudson, S.E. & Mankoff, J. (2014). Concepts, Values, and Methods
   for Technical HCI Research. In Ways of Knowing in HCI, 69-93.
 - Lukoff, K. (2026). Research through Building. [TBD]
