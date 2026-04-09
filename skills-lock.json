@@ -51,11 +51,6 @@
       "sourceType": "github",
       "computedHash": "b01b8be227a2a094e4b65f340c5a767bdbfd27d8bf2ccee4f75c203e44a5a592"
     },
-    "frontend-design": {
-      "source": "pbakaus/impeccable",
-      "sourceType": "github",
-      "computedHash": "b7146ef043e1d612023eadc58f0984cbb76f2beabba787d3189e53810b96ccc9"
-    },
     "harden": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
