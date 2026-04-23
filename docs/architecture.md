@@ -33,13 +33,20 @@ System_Ext(AnthropicAPI, "Anthropic API (Claude)", "LLM answering grounded quest
 System_Boundary(GazeReaderBoundary, "GazeReader") {
   Container(WebFrontend, "Web app (Next.js/React)", "TypeScript", "UI: PaperViewer + Searchlight + QueryPanel + Calibration")
   Container(GazeTracking, "Gaze tracking module", "WebGazer + MediaPipe Face Mesh (WASM)", "Calibration + gaze smoothing + gaze→paragraph inference")
-  Container(ApiRouteAsk, "Backend API route (/api/ask)", "Next.js Route Handler", "Builds grounded prompt; calls Anthropic; returns answer text")
   Container(PaperContent, "Paper content store", "Static files (MVP)", "Sample paper HTML/metadata served from public/")
+  Container(ApiRouteAsk, "Backend API route (/api/ask)", "Next.js Route Handler", "Builds grounded prompt; calls Anthropic; returns answer text")
 }
 
 Rel(Researcher, WebFrontend, "Uses", "HTTPS")
-Rel(WebFrontend, PaperContent, "Fetches paper HTML/metadata", "HTTP")
-Rel(WebFrontend, GazeTracking, "Streams gaze coords; receives active paragraph/chunk", "In-process")
-Rel(WebFrontend, ApiRouteAsk, "POST /api/ask (question + passage + paper context)", "HTTPS/JSON")
-Rel(ApiRouteAsk, AnthropicAPI, "LLM inference (grounded Q&A)", "HTTPS")
+Rel(WebFrontend, GazeTracking, "Gaze coords / active paragraph", "in-process")
+Rel(WebFrontend, PaperContent, "Loads paper HTML", "HTTP")
+Rel(WebFrontend, ApiRouteAsk, "POST /api/ask", "HTTPS / JSON")
+Rel(ApiRouteAsk, AnthropicAPI, "LLM inference", "HTTPS")
+
+UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
+
+UpdateRelStyle(WebFrontend, GazeTracking, $offsetY="-10")
+UpdateRelStyle(WebFrontend, ApiRouteAsk, $offsetX="-30", $offsetY="-10")
+UpdateRelStyle(WebFrontend, PaperContent, $offsetX="-20")
+UpdateRelStyle(ApiRouteAsk, AnthropicAPI, $offsetX="-20")
 ```
