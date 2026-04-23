@@ -6,18 +6,25 @@
 C4Context
 title GazeReader - System Context
 
-Person(Researcher, "Student/Researcher", "Reads academic papers; asks contextual questions")
+Person(Researcher, "Student/Researcher", "Reads papers; asks contextual questions")
 
-System(GazeReader, "GazeReader", "Gaze-aware AI reading assistant that keeps readers anchored in the paper")
+System(GazeReader, "GazeReader", "Gaze-aware AI reading assistant")
 
-System_Ext(AnthropicAPI, "Anthropic API (Claude)", "LLM answering grounded questions")
-System_Ext(PaperSource, "Paper source", "Local sample paper or imported HTML/PDF")
-System_Ext(BrowserWebcam, "Browser + Webcam", "Provides camera stream (and mic, optional)")
+System_Ext(BrowserWebcam, "Browser + Webcam", "Camera stream (mic optional)")
+System_Ext(PaperSource, "Paper source", "Sample / imported HTML or PDF")
+System_Ext(AnthropicAPI, "Anthropic API (Claude)", "Grounded LLM answers")
 
-Rel(Researcher, GazeReader, "Reads paper; asks questions; receives answers")
-Rel(GazeReader, BrowserWebcam, "Uses webcam stream for gaze tracking", "Web APIs")
-Rel(GazeReader, PaperSource, "Loads paper content", "HTTP/File")
-Rel(GazeReader, AnthropicAPI, "Sends question + passage + full paper; receives answer", "HTTPS")
+Rel(Researcher, GazeReader, "Reads paper; asks questions")
+Rel(GazeReader, BrowserWebcam, "Gaze tracking", "Web APIs")
+Rel(GazeReader, PaperSource, "Loads paper", "HTTP / file")
+Rel(GazeReader, AnthropicAPI, "Question + passage + paper", "HTTPS")
+
+UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
+
+UpdateRelStyle(Researcher, GazeReader, $offsetY="-10")
+UpdateRelStyle(GazeReader, BrowserWebcam, $offsetX="-20")
+UpdateRelStyle(GazeReader, PaperSource, $offsetX="-10")
+UpdateRelStyle(GazeReader, AnthropicAPI, $offsetX="-20", $offsetY="-10")
 ```
 
 ## C4 container
