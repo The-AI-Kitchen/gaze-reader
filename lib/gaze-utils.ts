@@ -37,7 +37,7 @@ export function smoothGaze(
   rawPoints: Array<{ x: number; y: number }>,
   windowSize: number = 5
 ): { x: number; y: number } {
-  const window = rawPoints.slice(-windowSize);
+  const window = rawPoints.slice(-(windowSize + 1));
   if (window.length === 0) return { x: 0, y: 0 };
 
   const sum = window.reduce(
