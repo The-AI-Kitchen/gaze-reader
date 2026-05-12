@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# instructor answer key for the week-7 security walkthrough; never commit
+SECURITY_PLANT_KEY.md
