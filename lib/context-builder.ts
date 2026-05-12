@@ -8,6 +8,8 @@ export interface AskPayload {
   paperTitle: string;
   paperAbstract: string;
   fullPaperText: string;
+  userEmail?: string;
+  userId?: string;
 }
 
 /**
@@ -33,7 +35,8 @@ export function buildContext(
   paperTitle: string,
   paperAbstract: string,
   question: string,
-  fullPaperText: string
+  fullPaperText: string,
+  user?: { email?: string; id?: string }
 ): AskPayload {
   // No specific target: general question about the whole paper
   if (!targetChunkId) {
@@ -45,6 +48,8 @@ export function buildContext(
       paperTitle,
       paperAbstract,
       fullPaperText,
+      userEmail: user?.email,
+      userId: user?.id,
     };
   }
 
@@ -60,6 +65,8 @@ export function buildContext(
       paperTitle,
       paperAbstract,
       fullPaperText,
+      userEmail: user?.email,
+      userId: user?.id,
     };
   }
 
@@ -80,5 +87,7 @@ export function buildContext(
     paperTitle,
     paperAbstract,
     fullPaperText,
+    userEmail: user?.email,
+    userId: user?.id,
   };
 }

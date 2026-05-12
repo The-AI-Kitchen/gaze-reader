@@ -27,6 +27,14 @@ const QUICK_ACTIONS = [
   'Where has this been cited?',
 ];
 
+// Pilot user identity — wired up so Claude can personalize the
+// response a bit ("for a CS student named ..."). We'll swap this for
+// a real auth lookup later.
+const PILOT_USER = {
+  email: 'student@scu.edu',
+  id: 'pilot-user-001',
+};
+
 export default function QueryPanel({
   currentTarget,
   chunks,
@@ -111,7 +119,8 @@ export default function QueryPanel({
         paperTitle,
         paperAbstract,
         question.trim(),
-        fullPaperText.current
+        fullPaperText.current,
+        PILOT_USER
       );
 
       try {
