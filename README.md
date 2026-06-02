@@ -2,6 +2,16 @@
 
 A gaze-aware AI reading assistant that tracks where you look on an academic paper and lets you ask contextual questions about the passage you're reading.
 
+## Example summary card
+
+An example deliverable for CSEN 174 students: a one-page summary card for GazeReader.
+
+![GazeReader summary card example](assets/summary-card-example.png)
+
+[Download the print-ready PDF](assets/summary-card-example.pdf)
+
+**This is an example, not a template.** GazeReader is a fictional demo product, and the card is a reference for layout and level of detail, not a template you have to copy. Use it to gauge expected scope and polish, then make your own design choices.
+
 ## Research Concept
 
 Reading academic papers is cognitively demanding. Readers frequently encounter unfamiliar terminology, dense arguments, or methodological details they want to interrogate. GazeReader uses webcam-based eye tracking to detect which passage a reader is focused on, then provides an AI assistant (Claude) pre-loaded with the full paper text and focused on that specific passage.
